@@ -188,11 +188,12 @@ func buildDownloadLink(extensionID string) string {
 }
 
 func parse(reader io.Reader) error {
+	const magicBytes = 0x43723234 // Cr24
 	magic := uint32(0)
 	if err := binary.Read(reader, binary.BigEndian, &magic); err != nil {
 		return err
 	}
-	if magic != 0x43723234 { // Cr24
+	if magic != magicBytes {
 		return InvalidMagicBytesErr
 	}
 	var version uint32
