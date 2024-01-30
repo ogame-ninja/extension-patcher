@@ -102,6 +102,16 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
+func jsBeautify(in []byte) []byte {
+	cmd := exec.Command("js-beautify", "-q", "-f '-'")
+	cmd.Stdin = bytes.NewReader(in)
+	processed, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+	return processed
+}
+
 func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen int) {
 	manifestFileName := p.params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
@@ -111,13 +121,7 @@ func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen
 	by = processorFn(by)
 
 	if p.params.JsBeautify && strings.HasSuffix(filename, ".js") {
-		cmd := exec.Command("js-beautify", "-q", "-f '-'")
-		cmd.Stdin = bytes.NewReader(by)
-		nby, err := cmd.Output()
-		if err != nil {
-			panic(err)
-		}
-		by = nby
+		by = jsBeautify(by)
 	}
 
 	_ = os.WriteFile(manifestFileName, by, perm)
