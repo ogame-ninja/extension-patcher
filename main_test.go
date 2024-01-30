@@ -30,7 +30,7 @@ func Test_mustReplaceStr(t *testing.T) {
 	}
 }
 
-func Test_mustReplaceExhaustiveStr(t *testing.T) {
+func Test_mustReplaceNStr(t *testing.T) {
 	type args struct {
 		in  string
 		old string

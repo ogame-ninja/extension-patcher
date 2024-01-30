@@ -31,6 +31,7 @@ const (
 
 func Start(params Params) {
 	defer func() {
+		// This is useful on windows because the default CMD window closes immediately
 		time.Sleep(5 * time.Second)
 	}()
 
