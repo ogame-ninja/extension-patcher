@@ -102,16 +102,6 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
-func jsBeautify(in []byte) []byte {
-	cmd := exec.Command("js-beautify", "-q", "-f '-'")
-	cmd.Stdin = bytes.NewReader(in)
-	processed, err := cmd.Output()
-	if err != nil {
-		panic(err)
-	}
-	return processed
-}
-
 func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen int) {
 	manifestFileName := p.params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
@@ -136,6 +126,16 @@ func (p *Patcher) processFiles() {
 	for _, f := range p.params.Files {
 		p.processFile(f.FileName, f.ProcessorFn, maxLen)
 	}
+}
+
+func jsBeautify(in []byte) []byte {
+	cmd := exec.Command("js-beautify", "-q", "-f '-'")
+	cmd.Stdin = bytes.NewReader(in)
+	processed, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+	return processed
 }
 
 func sha256f(filename string) string {
