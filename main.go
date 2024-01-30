@@ -213,23 +213,23 @@ func unzip(src string, dst string) error {
 	}
 	defer r.Close()
 	for f := range r.File {
-		dstpath := filepath.Join(dst, r.File[f].Name)
-		if !strings.HasPrefix(dstpath, filepath.Clean(dst)+string(os.PathSeparator)) {
+		destinationPath := filepath.Join(dst, r.File[f].Name)
+		if !strings.HasPrefix(destinationPath, filepath.Clean(dst)+string(os.PathSeparator)) {
 			return fmt.Errorf("%s: illegal file path", src)
 		}
 		if r.File[f].FileInfo().IsDir() {
-			if err := os.MkdirAll(dstpath, os.ModePerm); err != nil {
+			if err := os.MkdirAll(destinationPath, os.ModePerm); err != nil {
 				return err
 			}
 		} else {
-			if err := os.MkdirAll(filepath.Dir(dstpath), os.ModePerm); err != nil {
+			if err := os.MkdirAll(filepath.Dir(destinationPath), os.ModePerm); err != nil {
 				return err
 			}
 			if rc, err := r.File[f].Open(); err != nil {
 				return err
 			} else {
 				defer rc.Close()
-				if of, err := os.OpenFile(dstpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, r.File[f].Mode()); err != nil {
+				if of, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, r.File[f].Mode()); err != nil {
 					return err
 				} else {
 					defer of.Close()
@@ -238,7 +238,7 @@ func unzip(src string, dst string) error {
 					} else {
 						of.Close()
 						rc.Close()
-						filenames = append(filenames, dstpath)
+						filenames = append(filenames, destinationPath)
 					}
 				}
 			}
@@ -270,19 +270,19 @@ func MustReplace(in []byte, old, new string, n int) (out []byte) {
 // Replace "n" occurrences of old with new
 // Return the last index of the replaced text
 func mustReplace2(in []byte, old, new string, n int) (out []byte, lastIdx int) {
-	oldb := []byte(old)
-	newb := []byte(new)
+	oldBytes := []byte(old)
+	newBytes := []byte(new)
 	if n == -1 {
-		out = bytes.Replace(in, oldb, newb, -1)
+		out = bytes.Replace(in, oldBytes, newBytes, -1)
 		return out, len(out)
 	}
 	replacementLength := len(new)
 	for i := 0; i < n; i++ {
-		startIdx := bytes.Index(in, oldb)
+		startIdx := bytes.Index(in, oldBytes)
 		if startIdx == -1 {
 			panic("not replaced properly")
 		}
-		newOut := bytes.Replace(in, oldb, newb, 1)
+		newOut := bytes.Replace(in, oldBytes, newBytes, 1)
 		idx := startIdx + replacementLength
 		out = append(out, newOut[:idx]...)
 		in = newOut[idx:]
