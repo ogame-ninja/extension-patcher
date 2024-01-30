@@ -19,6 +19,19 @@ import (
 	"time"
 )
 
+const (
+	perm              os.FileMode = 0644
+	panicOnReplaceErr             = true
+	print_sha256                  = false
+)
+
+type FileProcessor func([]byte) []byte
+
+type FileAndProcessor struct {
+	FileName    string
+	ProcessorFn FileProcessor
+}
+
 type Params struct {
 	ExtensionName  string // infinity
 	ExpectedSha256 string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
@@ -26,12 +39,6 @@ type Params struct {
 	Files          []FileAndProcessor
 	JsBeautify     bool // Either or not to run "js-beautify" on js files
 }
-
-const (
-	perm              os.FileMode = 0644
-	panicOnReplaceErr             = true
-	print_sha256                  = false
-)
 
 type Patcher struct {
 	params Params
@@ -149,13 +156,6 @@ func sha256f(filename string) string {
 		panic(err)
 	}
 	return hex.EncodeToString(h.Sum(nil))
-}
-
-type FileProcessor func([]byte) []byte
-
-type FileAndProcessor struct {
-	FileName    string
-	ProcessorFn FileProcessor
 }
 
 func getExtensionIDFromLink(link string) string {
