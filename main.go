@@ -26,18 +26,18 @@ const (
 
 var InvalidMagicBytesErr = errors.New("invalid magic bytes")
 
-type FileProcessor func([]byte) []byte
+type Processor func([]byte) []byte
 
-type FileAndProcessor struct {
-	FileName    string
-	ProcessorFn FileProcessor
+type FileAndProcessors struct {
+	FileName   string
+	Processors []Processor
 }
 
 type Params struct {
 	ExtensionName    string // infinity
 	ExpectedSha256   string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
 	WebstoreURL      string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
-	Files            []FileAndProcessor
+	Files            []FileAndProcessors
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
 	KeepZip          bool
@@ -118,16 +118,18 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
-func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen int) {
+func (p *Patcher) processFile(filename string, processors []Processor, maxLen int) {
 	manifestFileName := p.params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
 	if err != nil {
 		panic(err)
 	}
-	by = processorFn(by)
+	for _, processor := range processors {
+		by = processor(by)
+	}
 
 	if p.params.JsBeautify && strings.HasSuffix(filename, ".js") {
-		by = jsBeautify(by)
+		by = JsBeautify(by)
 	}
 
 	if err := os.WriteFile(manifestFileName, by, perm); err != nil {
@@ -142,11 +144,15 @@ func (p *Patcher) processFiles() {
 		maxLen = int(math.Max(float64(len(f.FileName)+1), float64(maxLen)))
 	}
 	for _, f := range p.params.Files {
-		p.processFile(f.FileName, f.ProcessorFn, maxLen)
+		p.processFile(f.FileName, f.Processors, maxLen)
 	}
 }
 
-func jsBeautify(in []byte) []byte {
+func NewFile(fileName string, processors ...Processor) FileAndProcessors {
+	return FileAndProcessors{FileName: fileName, Processors: processors}
+}
+
+func JsBeautify(in []byte) []byte {
 	cmd := exec.Command("js-beautify", "-q", "-f '-'")
 	cmd.Stdin = bytes.NewReader(in)
 	processed, err := cmd.Output()
