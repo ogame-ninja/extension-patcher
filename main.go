@@ -95,7 +95,10 @@ func (p *Patcher) Start() {
 
 	p.processFiles()
 
-	path, _ := os.Getwd()
+	path, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println("Done. code generated in " + path)
 }
 
