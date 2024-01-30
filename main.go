@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -123,7 +124,7 @@ func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen
 func (p *Patcher) processFiles() {
 	maxLen := 0
 	for _, f := range p.params.Files {
-		maxLen = len(f.FileName) + 1
+		maxLen = int(math.Max(float64(len(f.FileName)+1), float64(maxLen)))
 	}
 	for _, f := range p.params.Files {
 		p.processFile(f.FileName, f.ProcessorFn, maxLen)
