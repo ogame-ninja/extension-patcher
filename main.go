@@ -130,7 +130,9 @@ func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen
 		by = jsBeautify(by)
 	}
 
-	_ = os.WriteFile(manifestFileName, by, perm)
+	if err := os.WriteFile(manifestFileName, by, perm); err != nil {
+		panic(err)
+	}
 	fmt.Printf("%-"+strconv.Itoa(maxLen)+"v patched\n", filename)
 }
 
@@ -232,35 +234,37 @@ func unzip(src string, dst string) error {
 	}
 	defer r.Close()
 	for f := range r.File {
-		destinationPath := filepath.Join(dst, r.File[f].Name)
-		if !strings.HasPrefix(destinationPath, filepath.Clean(dst)+string(os.PathSeparator)) {
-			return fmt.Errorf("%s: illegal file path", src)
-		}
-		if r.File[f].FileInfo().IsDir() {
-			if err := os.MkdirAll(destinationPath, os.ModePerm); err != nil {
-				return err
+		if err := func(f int) error {
+			destinationPath := filepath.Join(dst, r.File[f].Name)
+			if !strings.HasPrefix(destinationPath, filepath.Clean(dst)+string(os.PathSeparator)) {
+				return fmt.Errorf("%s: illegal file path", src)
 			}
-		} else {
+			if r.File[f].FileInfo().IsDir() {
+				if err := os.MkdirAll(destinationPath, os.ModePerm); err != nil {
+					return err
+				}
+				return nil
+			}
 			if err := os.MkdirAll(filepath.Dir(destinationPath), os.ModePerm); err != nil {
 				return err
 			}
-			if rc, err := r.File[f].Open(); err != nil {
+			rc, err := r.File[f].Open()
+			if err != nil {
 				return err
-			} else {
-				defer rc.Close()
-				if of, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, r.File[f].Mode()); err != nil {
-					return err
-				} else {
-					defer of.Close()
-					if _, err = io.Copy(of, rc); err != nil {
-						return err
-					} else {
-						of.Close()
-						rc.Close()
-						filenames = append(filenames, destinationPath)
-					}
-				}
 			}
+			defer rc.Close()
+			of, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, r.File[f].Mode())
+			if err != nil {
+				return err
+			}
+			defer of.Close()
+			if _, err = io.Copy(of, rc); err != nil {
+				return err
+			}
+			filenames = append(filenames, destinationPath)
+			return nil
+		}(f); err != nil {
+			return err
 		}
 	}
 	if len(filenames) == 0 {
