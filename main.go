@@ -19,9 +19,9 @@ import (
 )
 
 type Params struct {
-	ExtensionName  string
-	ExpectedSha256 string
-	WebstoreURL    string
+	ExtensionName  string // infinity
+	ExpectedSha256 string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
+	WebstoreURL    string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
 	Files          []FileAndProcessor
 	JsBeautify     bool // Either or not to run "js-beautify" on js files
 }
@@ -31,17 +31,41 @@ const (
 	print_sha256      = false
 )
 
-func Start(params Params) {
+type Patcher struct {
+	Params Params
+}
+
+func New(params Params) (*Patcher, error) {
+	if params.ExtensionName == "" {
+		return nil, errors.New("missing ExtensionName")
+	}
+	if params.ExpectedSha256 == "" {
+		return nil, errors.New("missing ExpectedSha256")
+	}
+	if len(params.ExpectedSha256) != 64 {
+		return nil, errors.New("ExpectedSha256 must be 64 characters long")
+	}
+	if params.WebstoreURL == "" {
+		return nil, errors.New("missing WebstoreURL")
+	}
+	if !strings.HasPrefix(params.WebstoreURL, "https://chrome.google.com/webstore/detail/") {
+		return nil, errors.New("invalid WebstoreURL")
+	}
+	if len(params.Files) == 0 {
+		return nil, errors.New("missing Files")
+	}
+	return &Patcher{Params: params}, nil
+}
+
+func (p *Patcher) Start() {
 	defer func() {
 		// This is useful on windows because the default CMD window closes immediately
 		time.Sleep(5 * time.Second)
 	}()
 
-	extensionName := params.ExtensionName
-	webstoreURL := params.WebstoreURL
-	expectedSha256 := params.ExpectedSha256
-	files := params.Files
-	jsBeautify := params.JsBeautify
+	extensionName := p.Params.ExtensionName
+	webstoreURL := p.Params.WebstoreURL
+	expectedSha256 := p.Params.ExpectedSha256
 
 	extensionNameZip := extensionName + ".zip"
 
@@ -67,7 +91,7 @@ func Start(params Params) {
 
 	_ = os.Remove(extensionNameZip)
 
-	processFiles(extensionName, files, jsBeautify)
+	p.processFiles()
 
 	path, _ := os.Getwd()
 	fmt.Println("Done. code generated in " + path)
@@ -88,15 +112,15 @@ func sha256f(filename string) string {
 
 const perm os.FileMode = 0644
 
-func processFile(extensionName, filename string, processorFn FileProcessor, jsBeautify bool) {
-	manifestFileName := extensionName + filename
+func (p *Patcher) processFile(filename string, processorFn FileProcessor) {
+	manifestFileName := p.Params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
 	if err != nil {
 		panic(err)
 	}
 	by = processorFn(by)
 
-	if jsBeautify && strings.HasSuffix(filename, ".js") {
+	if p.Params.JsBeautify && strings.HasSuffix(filename, ".js") {
 		cmd := exec.Command("js-beautify", "-q", "-f '-'")
 		cmd.Stdin = bytes.NewReader(by)
 		nby, err := cmd.Output()
@@ -110,9 +134,9 @@ func processFile(extensionName, filename string, processorFn FileProcessor, jsBe
 	fmt.Printf("%-20v patched\n", filename)
 }
 
-func processFiles(extensionName string, files []FileAndProcessor, jsBeautify bool) {
-	for _, f := range files {
-		processFile(extensionName, f.FileName, f.ProcessorFn, jsBeautify)
+func (p *Patcher) processFiles() {
+	for _, f := range p.Params.Files {
+		p.processFile(f.FileName, f.ProcessorFn)
 	}
 }
 
