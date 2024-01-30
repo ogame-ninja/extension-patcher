@@ -40,6 +40,7 @@ type Params struct {
 	Files            []FileAndProcessor
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
+	KeepZip          bool
 }
 
 type Patcher struct {
@@ -104,7 +105,9 @@ func (p *Patcher) Start() {
 		panic(err)
 	}
 
-	_ = os.Remove(extensionNameZip)
+	if !p.params.KeepZip {
+		_ = os.Remove(extensionNameZip)
+	}
 
 	p.processFiles()
 
