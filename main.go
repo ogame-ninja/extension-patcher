@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ type Params struct {
 	ExpectedSha256 string
 	WebstoreURL    string
 	Files          []FileAndProcessor
+	JsBeautify     bool // Either or not to run "js-beautify" on js files
 }
 
 const (
@@ -39,6 +41,7 @@ func Start(params Params) {
 	webstoreURL := params.WebstoreURL
 	expectedSha256 := params.ExpectedSha256
 	files := params.Files
+	jsBeautify := params.JsBeautify
 
 	extensionNameZip := extensionName + ".zip"
 
@@ -64,7 +67,7 @@ func Start(params Params) {
 
 	_ = os.Remove(extensionNameZip)
 
-	processFiles(extensionName, files)
+	processFiles(extensionName, files, jsBeautify)
 
 	path, _ := os.Getwd()
 	fmt.Println("Done. code generated in " + path)
@@ -85,20 +88,31 @@ func sha256f(filename string) string {
 
 const perm os.FileMode = 0644
 
-func processFile(extensionName, filename string, processorFn FileProcessor) {
+func processFile(extensionName, filename string, processorFn FileProcessor, jsBeautify bool) {
 	manifestFileName := extensionName + filename
 	by, err := os.ReadFile(manifestFileName)
 	if err != nil {
 		panic(err)
 	}
 	by = processorFn(by)
+
+	if jsBeautify && strings.HasSuffix(filename, ".js") {
+		cmd := exec.Command("js-beautify", "-q", "-f '-'")
+		cmd.Stdin = bytes.NewReader(by)
+		nby, err := cmd.Output()
+		if err != nil {
+			panic(err)
+		}
+		by = nby
+	}
+
 	_ = os.WriteFile(manifestFileName, by, perm)
 	fmt.Printf("%-20v patched\n", filename)
 }
 
-func processFiles(extensionName string, files []FileAndProcessor) {
+func processFiles(extensionName string, files []FileAndProcessor, jsBeautify bool) {
 	for _, f := range files {
-		processFile(extensionName, f.FileName, f.ProcessorFn)
+		processFile(extensionName, f.FileName, f.ProcessorFn, jsBeautify)
 	}
 }
 
