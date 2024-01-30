@@ -98,7 +98,7 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
-func (p *Patcher) processFile(filename string, processorFn FileProcessor) {
+func (p *Patcher) processFile(filename string, processorFn FileProcessor, maxLen int) {
 	manifestFileName := p.params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
 	if err != nil {
@@ -117,12 +117,16 @@ func (p *Patcher) processFile(filename string, processorFn FileProcessor) {
 	}
 
 	_ = os.WriteFile(manifestFileName, by, perm)
-	fmt.Printf("%-20v patched\n", filename)
+	fmt.Printf("%-"+strconv.Itoa(maxLen)+"v patched\n", filename)
 }
 
 func (p *Patcher) processFiles() {
+	maxLen := 0
 	for _, f := range p.params.Files {
-		p.processFile(f.FileName, f.ProcessorFn)
+		maxLen = len(f.FileName) + 1
+	}
+	for _, f := range p.params.Files {
+		p.processFile(f.FileName, f.ProcessorFn, maxLen)
 	}
 }
 
