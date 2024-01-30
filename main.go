@@ -182,7 +182,9 @@ func getExtensionIDFromLink(link string) string {
 }
 
 func buildDownloadLink(extensionID string) string {
-	return "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=49.0&acceptformat=crx3&x=id%3D" + extensionID + "%26installsource%3Dondemand%26uc"
+	return "https://clients2.google.com/service/update2/crx?" +
+		"response=redirect&prodversion=49.0&acceptformat=crx3&" +
+		"x=id%3D" + extensionID + "%26installsource%3Dondemand%26uc"
 }
 
 func parse(reader io.Reader) error {
@@ -229,7 +231,10 @@ func downloadExtension(webstoreURL, zipFileName string) error {
 
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func unzip(src string, dst string) error {
