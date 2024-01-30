@@ -22,7 +22,6 @@ import (
 const (
 	perm              os.FileMode = 0644
 	panicOnReplaceErr             = true
-	print_sha256                  = false
 )
 
 var InvalidMagicBytesErr = errors.New("invalid magic bytes")
@@ -88,11 +87,8 @@ func (p *Patcher) Start() {
 	}
 
 	extensionZipSha256 := sha256f(extensionNameZip)
-	if print_sha256 {
-		fmt.Println(extensionZipSha256)
-	}
 	if extensionZipSha256 != expectedSha256 {
-		fmt.Println("invalid file from chrome app store")
+		fmt.Printf("invalid file from chrome app store (sha256: %s) \n", extensionZipSha256)
 		return
 	}
 
