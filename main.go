@@ -33,7 +33,7 @@ const (
 )
 
 type Patcher struct {
-	Params Params
+	params Params
 }
 
 func New(params Params) (*Patcher, error) {
@@ -55,7 +55,7 @@ func New(params Params) (*Patcher, error) {
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
 	}
-	return &Patcher{Params: params}, nil
+	return &Patcher{params: params}, nil
 }
 
 func (p *Patcher) Start() {
@@ -64,9 +64,9 @@ func (p *Patcher) Start() {
 		time.Sleep(5 * time.Second)
 	}()
 
-	extensionName := p.Params.ExtensionName
-	webstoreURL := p.Params.WebstoreURL
-	expectedSha256 := p.Params.ExpectedSha256
+	extensionName := p.params.ExtensionName
+	webstoreURL := p.params.WebstoreURL
+	expectedSha256 := p.params.ExpectedSha256
 
 	extensionNameZip := extensionName + ".zip"
 
@@ -99,14 +99,14 @@ func (p *Patcher) Start() {
 }
 
 func (p *Patcher) processFile(filename string, processorFn FileProcessor) {
-	manifestFileName := p.Params.ExtensionName + filename
+	manifestFileName := p.params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
 	if err != nil {
 		panic(err)
 	}
 	by = processorFn(by)
 
-	if p.Params.JsBeautify && strings.HasSuffix(filename, ".js") {
+	if p.params.JsBeautify && strings.HasSuffix(filename, ".js") {
 		cmd := exec.Command("js-beautify", "-q", "-f '-'")
 		cmd.Stdin = bytes.NewReader(by)
 		nby, err := cmd.Output()
@@ -121,7 +121,7 @@ func (p *Patcher) processFile(filename string, processorFn FileProcessor) {
 }
 
 func (p *Patcher) processFiles() {
-	for _, f := range p.Params.Files {
+	for _, f := range p.params.Files {
 		p.processFile(f.FileName, f.ProcessorFn)
 	}
 }
