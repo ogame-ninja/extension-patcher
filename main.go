@@ -34,11 +34,12 @@ type FileAndProcessor struct {
 }
 
 type Params struct {
-	ExtensionName  string // infinity
-	ExpectedSha256 string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
-	WebstoreURL    string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
-	Files          []FileAndProcessor
-	JsBeautify     bool // Either or not to run "js-beautify" on js files
+	ExtensionName    string // infinity
+	ExpectedSha256   string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
+	WebstoreURL      string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
+	Files            []FileAndProcessor
+	JsBeautify       bool // Either or not to run "js-beautify" on js files
+	DelayBeforeClose *int
 }
 
 type Patcher struct {
@@ -64,14 +65,21 @@ func New(params Params) (*Patcher, error) {
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
 	}
+	if params.DelayBeforeClose == nil {
+		params.DelayBeforeClose = new(int)
+		*params.DelayBeforeClose = 5
+	}
 	return &Patcher{params: params}, nil
 }
 
 func (p *Patcher) Start() {
-	defer func() {
-		// This is useful on windows because the default CMD window closes immediately
-		time.Sleep(5 * time.Second)
-	}()
+	delayBeforeClose := p.params.DelayBeforeClose
+	if delayBeforeClose != nil {
+		defer func() {
+			// This is useful on windows because the default CMD window closes immediately
+			time.Sleep(time.Duration(*delayBeforeClose) * time.Second)
+		}()
+	}
 
 	extensionName := p.params.ExtensionName
 	webstoreURL := p.params.WebstoreURL
