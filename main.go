@@ -25,6 +25,8 @@ const (
 	print_sha256                  = false
 )
 
+var InvalidMagicBytesErr = errors.New("invalid magic bytes")
+
 type FileProcessor func([]byte) []byte
 
 type FileAndProcessor struct {
@@ -168,15 +170,13 @@ func buildDownloadLink(extensionID string) string {
 	return "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=49.0&acceptformat=crx3&x=id%3D" + extensionID + "%26installsource%3Dondemand%26uc"
 }
 
-var InvalidMagixBytesErr = errors.New("invalid magic bytes")
-
 func parse(reader io.Reader) error {
 	magic := uint32(0)
 	if err := binary.Read(reader, binary.BigEndian, &magic); err != nil {
 		return err
 	}
 	if magic != 0x43723234 { // Cr24
-		return InvalidMagixBytesErr
+		return InvalidMagicBytesErr
 	}
 	var version uint32
 	if err := binary.Read(reader, binary.BigEndian, &version); err != nil {
