@@ -27,8 +27,9 @@ type Params struct {
 }
 
 const (
-	panicOnReplaceErr = true
-	print_sha256      = false
+	perm              os.FileMode = 0644
+	panicOnReplaceErr             = true
+	print_sha256                  = false
 )
 
 type Patcher struct {
@@ -97,21 +98,6 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
-func sha256f(filename string) string {
-	h := sha256.New()
-	f, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	if _, err := io.Copy(h, f); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-const perm os.FileMode = 0644
-
 func (p *Patcher) processFile(filename string, processorFn FileProcessor) {
 	manifestFileName := p.Params.ExtensionName + filename
 	by, err := os.ReadFile(manifestFileName)
@@ -138,6 +124,19 @@ func (p *Patcher) processFiles() {
 	for _, f := range p.Params.Files {
 		p.processFile(f.FileName, f.ProcessorFn)
 	}
+}
+
+func sha256f(filename string) string {
+	h := sha256.New()
+	f, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	if _, err := io.Copy(h, f); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 type FileProcessor func([]byte) []byte
