@@ -44,11 +44,12 @@ func Test_mustReplaceNStr(t *testing.T) {
 	}{
 		{name: "1", args: args{in: "ToReplace ToReplace ToReplace", old: "ToReplace", new: "ToReplaceNew", n: 3}, want: "ToReplaceNew ToReplaceNew ToReplaceNew"},
 		{name: "1", args: args{in: "ToReplace Or ToReplace Some Other Text", old: "ToReplace", new: "ToReplaceNew", n: 2}, want: "ToReplaceNew Or ToReplaceNew Some Other Text"},
+		{name: "1", args: args{in: "ToReplace", old: "ToReplace", new: "New {old} New", n: 1}, want: "New ToReplace New"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := mustReplaceNStr(tt.args.in, tt.args.old, tt.args.new, tt.args.n); got != tt.want {
-				t.Errorf("mustReplaceExhaustiveStr() = %v, want %v", got, tt.want)
+				t.Errorf("mustReplaceNStr() = %v, want %v", got, tt.want)
 			}
 		})
 	}

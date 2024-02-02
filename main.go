@@ -316,6 +316,7 @@ func MustReplace(in []byte, old, new string, n int) (out []byte) {
 func mustReplace2(in []byte, old, new string, n int) (out []byte, lastIdx int) {
 	oldBytes := []byte(old)
 	newBytes := []byte(new)
+	newBytes = bytes.Replace(newBytes, []byte("{old}"), oldBytes, 1)
 	if n == -1 {
 		out = bytes.Replace(in, oldBytes, newBytes, -1)
 		return out, len(out)
