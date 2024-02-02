@@ -199,7 +199,7 @@ func (p *Patcher) autoAnalyse() {
 		}
 		for _, term := range terms {
 			if bytes.Contains(by, []byte(term)) {
-				fmt.Println(filePath, "contains "+term)
+				fmt.Printf("%s contains %s\n", filePath, term)
 			}
 		}
 	}
