@@ -366,3 +366,8 @@ func mustReplaceStr(in, old, new string, n int) (out string) {
 func mustReplaceNStr(in, old, new string, n int) string {
 	return string(MustReplaceN([]byte(in), old, new, n))
 }
+
+func Int(v int) *int {
+	tmp := v
+	return &tmp
+}
