@@ -132,8 +132,8 @@ func (p *Patcher) Start() {
 }
 
 func (p *Patcher) processFile(filename string, processors []Processor, maxLen int) {
-	manifestFileName := p.params.ExtensionName + filename
-	by, err := os.ReadFile(manifestFileName)
+	filePath := p.params.ExtensionName + filename
+	by, err := os.ReadFile(filePath)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +145,7 @@ func (p *Patcher) processFile(filename string, processors []Processor, maxLen in
 		by = JsBeautify(by)
 	}
 
-	if err := os.WriteFile(manifestFileName, by, perm); err != nil {
+	if err := os.WriteFile(filePath, by, perm); err != nil {
 		panic(err)
 	}
 	fmt.Printf("%-"+strconv.Itoa(maxLen)+"v patched\n", filename)
