@@ -238,6 +238,8 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 			log.Println(err)
 		}
 		scanner := bufio.NewScanner(bytes.NewReader(by))
+		buf := make([]byte, 0, 64*1024)
+		scanner.Buffer(buf, len(by))
 		lineNumber := 0
 		for scanner.Scan() {
 			lineNumber++
