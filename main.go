@@ -215,9 +215,18 @@ func (p *Patcher) autoAnalyse() {
 			"highscore.xml",
 			"location.host",
 		}
+		foundTerm := false
 		for _, term := range terms {
 			if bytes.Contains(by, []byte(term)) {
 				fmt.Printf("%s contains %s\n", filePath, term)
+				foundTerm = true
+			}
+		}
+		if foundTerm && strings.HasSuffix(filePath, ".js") {
+			by = JsBeautify(by)
+			info, _ := entry.DirEntry.Info()
+			if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
+				log.Println(err)
 			}
 		}
 	}
