@@ -74,6 +74,14 @@ func New(params Params) (*Patcher, error) {
 	return &Patcher{params: params}, nil
 }
 
+func MustNew(params Params) *Patcher {
+	p, err := New(params)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
 func (p *Patcher) Start() {
 	delayBeforeClose := p.params.DelayBeforeClose
 	if delayBeforeClose != nil {
