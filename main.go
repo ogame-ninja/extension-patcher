@@ -239,6 +239,8 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 func processFileContent(by []byte, filePath string, entry MyEntry, termsFound []string, terms []string) {
 	fmt.Printf("%s\n", Green(filePath))
 	fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
+
+	// If we are processing a .js file, run js-beautify on it and save it
 	if strings.HasSuffix(filePath, jsExtension) {
 		by = JsBeautify(by)
 		info, _ := entry.DirEntry.Info()
@@ -246,6 +248,7 @@ func processFileContent(by []byte, filePath string, entry MyEntry, termsFound []
 			log.Println(err)
 		}
 	}
+
 	scanner := bufio.NewScanner(bytes.NewReader(by))
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, len(by))
@@ -268,6 +271,7 @@ func processFileContent(by []byte, filePath string, entry MyEntry, termsFound []
 	fmt.Println(strings.Repeat("-", 30))
 }
 
+// We should process a line if any of the terms is present in it
 func shouldProcessLine(line string, terms []string) bool {
 	for _, term := range terms {
 		if strings.Contains(line, term) {
@@ -277,6 +281,7 @@ func shouldProcessLine(line string, terms []string) bool {
 	return false
 }
 
+// Colorify all the terms in the line
 func processLine(line string, terms []string) string {
 	var newTerms []string
 	for _, term := range terms {
