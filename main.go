@@ -230,13 +230,15 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 			termsFound = append(termsFound, Yellow(term))
 		}
 	}
-	if len(termsFound) > 0 && strings.HasSuffix(filePath, ".js") {
+	if len(termsFound) > 0 {
 		fmt.Printf("%s\n", Green(filePath))
 		fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
-		by = JsBeautify(by)
-		info, _ := entry.DirEntry.Info()
-		if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
-			log.Println(err)
+		if strings.HasSuffix(filePath, ".js") {
+			by = JsBeautify(by)
+			info, _ := entry.DirEntry.Info()
+			if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
+				log.Println(err)
+			}
 		}
 		scanner := bufio.NewScanner(bytes.NewReader(by))
 		buf := make([]byte, 0, 64*1024)
@@ -246,14 +248,14 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 			lineNumber++
 			line := scanner.Text()
 
-			shouldProcess := false
+			shouldProcessLine := false
 			for _, term := range terms {
 				if strings.Contains(line, term) {
-					shouldProcess = true
+					shouldProcessLine = true
 					break
 				}
 			}
-			if shouldProcess {
+			if shouldProcessLine {
 				var newTerms []string
 				for _, term := range terms {
 					newTerms = append(newTerms, term, Red(term))
