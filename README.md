@@ -26,6 +26,7 @@ func processManifest(by []byte) []byte {
 
 ```
 go mod init your_extension_name
+go mod tidy
 go mod vendor
 go run main.go
 ```
