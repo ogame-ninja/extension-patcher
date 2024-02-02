@@ -231,7 +231,8 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 		}
 	}
 	if len(termsFound) > 0 && strings.HasSuffix(filePath, ".js") {
-		fmt.Printf("%s contains `%s`\n", Green(filePath), strings.Join(termsFound, ", "))
+		fmt.Printf("%s\n", Green(filePath))
+		fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
 		by = JsBeautify(by)
 		info, _ := entry.DirEntry.Info()
 		if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
