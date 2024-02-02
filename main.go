@@ -207,47 +207,51 @@ func (p *Patcher) autoAnalyse() {
 			log.Println(err)
 			continue
 		}
-		terms := []string{
-			"index.php",
-			"ogame.gameforge.com",
-			"alliances.xml",
-			"players.xml",
-			"universe.xml",
-			"highscore.xml",
-			"location.host",
-		}
-		foundTerm := false
-		for _, term := range terms {
-			if bytes.Contains(by, []byte(term)) {
-				fmt.Printf("%s contains %s\n", filePath, term)
-				foundTerm = true
-			}
-		}
-		if foundTerm && strings.HasSuffix(filePath, ".js") {
-			by = JsBeautify(by)
-			info, _ := entry.DirEntry.Info()
-			if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
-				log.Println(err)
-			}
-			scanner := bufio.NewScanner(bytes.NewReader(by))
-			lineNumber := 0
-			for scanner.Scan() {
-				lineNumber++
-				line := scanner.Text()
-
-				for _, term := range terms {
-					if strings.Contains(line, term) {
-						fmt.Printf("%d: %s\n", lineNumber, line)
-					}
-				}
-			}
-			if scanner.Err() != nil {
-				log.Println(err)
-			}
-			fmt.Println(strings.Repeat("-", 30))
-		}
+		analyzeFileContent(by, filePath, entry, err)
 	}
 	fmt.Println(strings.Repeat("-", 80))
+}
+
+func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
+	terms := []string{
+		"index.php",
+		"ogame.gameforge.com",
+		"alliances.xml",
+		"players.xml",
+		"universe.xml",
+		"highscore.xml",
+		"location.host",
+	}
+	var termsFound []string
+	for _, term := range terms {
+		if bytes.Contains(by, []byte(term)) {
+			termsFound = append(termsFound, term)
+		}
+	}
+	if len(termsFound) > 0 && strings.HasSuffix(filePath, ".js") {
+		fmt.Printf("%s contains `%s`\n", filePath, strings.Join(termsFound, ", "))
+		by = JsBeautify(by)
+		info, _ := entry.DirEntry.Info()
+		if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
+			log.Println(err)
+		}
+		scanner := bufio.NewScanner(bytes.NewReader(by))
+		lineNumber := 0
+		for scanner.Scan() {
+			lineNumber++
+			line := scanner.Text()
+
+			for _, term := range terms {
+				if strings.Contains(line, term) {
+					fmt.Printf("%d: %s\n", lineNumber, line)
+				}
+			}
+		}
+		if scanner.Err() != nil {
+			log.Println(err)
+		}
+		fmt.Println(strings.Repeat("-", 30))
+	}
 }
 
 func NewFile(fileName string, processors ...Processor) FileAndProcessors {
