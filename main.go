@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -166,6 +167,11 @@ func (p *Patcher) processFiles() {
 	}
 }
 
+type MyEntry struct {
+	os.DirEntry
+	Prefix string
+}
+
 func (p *Patcher) autoAnalyse() {
 	fmt.Println(strings.Repeat("-", 80))
 	extName := p.params.ExtensionName
@@ -173,20 +179,31 @@ func (p *Patcher) autoAnalyse() {
 	if err != nil {
 		panic(err)
 	}
-	var entry os.DirEntry
+	var myEntries []MyEntry
+	for _, entry := range entries {
+		myEntries = append(myEntries, MyEntry{DirEntry: entry, Prefix: extName})
+	}
+	var entry MyEntry
 	for {
-		if len(entries) == 0 {
+		if len(myEntries) == 0 {
 			break
 		}
-		entry, entries = entries[0], entries[1:]
-		filePath := filepath.Join(extName, entry.Name())
+		entry, myEntries = myEntries[0], myEntries[1:]
+		filePath := filepath.Join(entry.Prefix, entry.Name())
 		if entry.IsDir() {
-			newEntries, _ := os.ReadDir(filePath)
-			entries = append(entries, newEntries...)
+			newEntries, err := os.ReadDir(filePath)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			for _, newEntry := range newEntries {
+				myEntries = append(myEntries, MyEntry{DirEntry: newEntry, Prefix: filePath})
+			}
 			continue
 		}
 		by, err := os.ReadFile(filePath)
 		if err != nil {
+			log.Println(err)
 			continue
 		}
 		terms := []string{
