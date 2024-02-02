@@ -25,6 +25,7 @@ import (
 const (
 	perm              os.FileMode = 0644
 	panicOnReplaceErr             = true
+	jsExtension                   = ".js"
 )
 
 var InvalidMagicBytesErr = errors.New("invalid magic bytes")
@@ -150,7 +151,7 @@ func (p *Patcher) processFile(filename string, processors []Processor, maxLen in
 		by = processor(by)
 	}
 
-	if p.params.JsBeautify && strings.HasSuffix(filename, ".js") {
+	if p.params.JsBeautify && strings.HasSuffix(filename, jsExtension) {
 		by = JsBeautify(by)
 	}
 
@@ -233,7 +234,7 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 	if len(termsFound) > 0 {
 		fmt.Printf("%s\n", Green(filePath))
 		fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
-		if strings.HasSuffix(filePath, ".js") {
+		if strings.HasSuffix(filePath, jsExtension) {
 			by = JsBeautify(by)
 			info, _ := entry.DirEntry.Info()
 			if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
