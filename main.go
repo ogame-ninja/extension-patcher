@@ -54,7 +54,7 @@ func New(params Params) (*Patcher, error) {
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
 	}
-	if len(params.ExpectedSha256) != 64 {
+	if len(params.ExpectedSha256) != 0 && len(params.ExpectedSha256) != 64 {
 		return nil, errors.New("ExpectedSha256 must be 64 characters long")
 	}
 	if params.WebstoreURL == "" {
