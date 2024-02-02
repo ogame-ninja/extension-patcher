@@ -325,7 +325,7 @@ func mustReplace2(in []byte, old, new string, n int) (out []byte, lastIdx int) {
 	for i := 0; i < n; i++ {
 		startIdx := bytes.Index(in, oldBytes)
 		if startIdx == -1 {
-			panic("not replaced properly")
+			panic(fmt.Sprintf("expected %d replacements, did %d", n, i))
 		}
 		newOut := bytes.Replace(in, oldBytes, newBytes, 1)
 		idx := startIdx + replacementLength
