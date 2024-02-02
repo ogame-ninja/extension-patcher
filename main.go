@@ -171,7 +171,7 @@ func (p *Patcher) processFiles() {
 	}
 }
 
-type MyEntry struct {
+type myEntryStruct struct {
 	os.DirEntry
 	Prefix string
 }
@@ -183,11 +183,11 @@ func (p *Patcher) autoAnalyse() {
 	if err != nil {
 		panic(err)
 	}
-	var myEntries []MyEntry
+	var myEntries []myEntryStruct
 	for _, entry := range entries {
-		myEntries = append(myEntries, MyEntry{DirEntry: entry, Prefix: extName})
+		myEntries = append(myEntries, myEntryStruct{DirEntry: entry, Prefix: extName})
 	}
-	var entry MyEntry
+	var entry myEntryStruct
 	for {
 		if len(myEntries) == 0 {
 			break
@@ -201,7 +201,7 @@ func (p *Patcher) autoAnalyse() {
 				continue
 			}
 			for _, newEntry := range newEntries {
-				myEntries = append(myEntries, MyEntry{DirEntry: newEntry, Prefix: filePath})
+				myEntries = append(myEntries, myEntryStruct{DirEntry: newEntry, Prefix: filePath})
 			}
 			continue
 		}
@@ -215,7 +215,7 @@ func (p *Patcher) autoAnalyse() {
 	fmt.Println(strings.Repeat("-", 80))
 }
 
-func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
+func analyzeFileContent(by []byte, filePath string, entry myEntryStruct, err error) {
 	terms := []string{
 		"index.php",
 		"ogame.gameforge.com",
@@ -236,7 +236,7 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 	}
 }
 
-func processFileContent(by []byte, filePath string, entry MyEntry, termsFound []string, terms []string) {
+func processFileContent(by []byte, filePath string, entry myEntryStruct, termsFound []string, terms []string) {
 	fmt.Printf("%s\n", Green(filePath))
 	fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
 
