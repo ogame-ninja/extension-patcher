@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -48,9 +49,6 @@ type Patcher struct {
 }
 
 func New(params Params) (*Patcher, error) {
-	if params.ExtensionName == "" {
-		return nil, errors.New("missing ExtensionName")
-	}
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
 	}
@@ -63,6 +61,12 @@ func New(params Params) (*Patcher, error) {
 	if !strings.HasPrefix(params.WebstoreURL, "https://chrome.google.com/webstore/detail/") &&
 		!strings.HasPrefix(params.WebstoreURL, "https://chromewebstore.google.com/detail/") {
 		return nil, errors.New("invalid WebstoreURL")
+	}
+	// No extension name provided, extract it from the webstore url
+	if params.ExtensionName == "" {
+		rgx := regexp.MustCompile(`/detail/([^/]+)/`)
+		m := rgx.FindStringSubmatch(params.WebstoreURL)
+		params.ExtensionName = m[1]
 	}
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
