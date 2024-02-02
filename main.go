@@ -260,8 +260,12 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 				fmt.Printf("%d: %s\n", lineNumber, line)
 			}
 		}
-		if scanner.Err() != nil {
-			log.Println(err)
+		if err := scanner.Err(); err != nil {
+			if errors.Is(err, bufio.ErrTooLong) {
+				log.Printf("%d: %v\n", lineNumber+1, err)
+			} else {
+				log.Println(err)
+			}
 		}
 		fmt.Println(strings.Repeat("-", 30))
 	}
