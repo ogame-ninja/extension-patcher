@@ -232,49 +232,58 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 		}
 	}
 	if len(termsFound) > 0 {
-		fmt.Printf("%s\n", Green(filePath))
-		fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
-		if strings.HasSuffix(filePath, jsExtension) {
-			by = JsBeautify(by)
-			info, _ := entry.DirEntry.Info()
-			if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
-				log.Println(err)
-			}
-		}
-		scanner := bufio.NewScanner(bytes.NewReader(by))
-		buf := make([]byte, 0, 64*1024)
-		scanner.Buffer(buf, len(by))
-		lineNumber := 0
-		for scanner.Scan() {
-			lineNumber++
-			line := scanner.Text()
-
-			shouldProcessLine := false
-			for _, term := range terms {
-				if strings.Contains(line, term) {
-					shouldProcessLine = true
-					break
-				}
-			}
-			if shouldProcessLine {
-				var newTerms []string
-				for _, term := range terms {
-					newTerms = append(newTerms, term, Red(term))
-				}
-				replacer := strings.NewReplacer(newTerms...)
-				line = replacer.Replace(line)
-				fmt.Printf("%d: %s\n", lineNumber, line)
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			if errors.Is(err, bufio.ErrTooLong) {
-				log.Printf("%d: %v\n", lineNumber+1, err)
-			} else {
-				log.Println(err)
-			}
-		}
-		fmt.Println(strings.Repeat("-", 30))
+		processFileContent(by, filePath, entry, termsFound, terms)
 	}
+}
+
+func processFileContent(by []byte, filePath string, entry MyEntry, termsFound []string, terms []string) {
+	fmt.Printf("%s\n", Green(filePath))
+	fmt.Printf("contains: %s\n", strings.Join(termsFound, ", "))
+	if strings.HasSuffix(filePath, jsExtension) {
+		by = JsBeautify(by)
+		info, _ := entry.DirEntry.Info()
+		if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
+			log.Println(err)
+		}
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(by))
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, len(by))
+	lineNumber := 0
+	for scanner.Scan() {
+		lineNumber++
+		line := scanner.Text()
+		if shouldProcessLine(line, terms) {
+			line = processLine(line, terms)
+			fmt.Printf("%d: %s\n", lineNumber, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			log.Printf("%d: %v\n", lineNumber+1, err)
+		} else {
+			log.Println(err)
+		}
+	}
+	fmt.Println(strings.Repeat("-", 30))
+}
+
+func shouldProcessLine(line string, terms []string) bool {
+	for _, term := range terms {
+		if strings.Contains(line, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func processLine(line string, terms []string) string {
+	var newTerms []string
+	for _, term := range terms {
+		newTerms = append(newTerms, term, Red(term))
+	}
+	replacer := strings.NewReplacer(newTerms...)
+	return replacer.Replace(line)
 }
 
 // NoColor ...
