@@ -42,6 +42,7 @@ type Params struct {
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
 	KeepZip          bool
+	AutoAnalysis     bool
 }
 
 type Patcher struct {
@@ -122,6 +123,10 @@ func (p *Patcher) Start() {
 		_ = os.Remove(extensionNameZip)
 	}
 
+	if p.params.AutoAnalysis {
+		p.autoAnalyse()
+	}
+
 	p.processFiles()
 
 	path, err := os.Getwd()
@@ -159,6 +164,46 @@ func (p *Patcher) processFiles() {
 	for _, f := range p.params.Files {
 		p.processFile(f.FileName, f.Processors, maxLen)
 	}
+}
+
+func (p *Patcher) autoAnalyse() {
+	fmt.Println(strings.Repeat("-", 80))
+	extName := p.params.ExtensionName
+	entries, err := os.ReadDir(extName)
+	if err != nil {
+		panic(err)
+	}
+	var entry os.DirEntry
+	for {
+		if len(entries) == 0 {
+			break
+		}
+		entry, entries = entries[0], entries[1:]
+		filePath := filepath.Join(extName, entry.Name())
+		if entry.IsDir() {
+			newEntries, _ := os.ReadDir(filePath)
+			entries = append(entries, newEntries...)
+			continue
+		}
+		by, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		terms := []string{
+			"index.php",
+			"ogame.gameforge.com",
+			"alliances.xml",
+			"players.xml",
+			"universe.xml",
+			"highscore.xml",
+		}
+		for _, term := range terms {
+			if bytes.Contains(by, []byte(term)) {
+				fmt.Println(filePath, "contains "+term)
+			}
+		}
+	}
+	fmt.Println(strings.Repeat("-", 80))
 }
 
 func NewFile(fileName string, processors ...Processor) FileAndProcessors {
