@@ -60,7 +60,8 @@ func New(params Params) (*Patcher, error) {
 	if params.WebstoreURL == "" {
 		return nil, errors.New("missing WebstoreURL")
 	}
-	if !strings.HasPrefix(params.WebstoreURL, "https://chrome.google.com/webstore/detail/") {
+	if !strings.HasPrefix(params.WebstoreURL, "https://chrome.google.com/webstore/detail/") &&
+		!strings.HasPrefix(params.WebstoreURL, "https://chromewebstore.google.com/detail/") {
 		return nil, errors.New("invalid WebstoreURL")
 	}
 	if len(params.Files) == 0 {
