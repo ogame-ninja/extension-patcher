@@ -225,11 +225,11 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 	var termsFound []string
 	for _, term := range terms {
 		if bytes.Contains(by, []byte(term)) {
-			termsFound = append(termsFound, term)
+			termsFound = append(termsFound, Yellow(term))
 		}
 	}
 	if len(termsFound) > 0 && strings.HasSuffix(filePath, ".js") {
-		fmt.Printf("%s contains `%s`\n", filePath, strings.Join(termsFound, ", "))
+		fmt.Printf("%s contains `%s`\n", Green(filePath), strings.Join(termsFound, ", "))
 		by = JsBeautify(by)
 		info, _ := entry.DirEntry.Info()
 		if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
@@ -241,10 +241,21 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 			lineNumber++
 			line := scanner.Text()
 
+			shouldProcess := false
 			for _, term := range terms {
 				if strings.Contains(line, term) {
-					fmt.Printf("%d: %s\n", lineNumber, line)
+					shouldProcess = true
+					break
 				}
+			}
+			if shouldProcess {
+				var newTerms []string
+				for _, term := range terms {
+					newTerms = append(newTerms, term, Red(term))
+				}
+				replacer := strings.NewReplacer(newTerms...)
+				line = replacer.Replace(line)
+				fmt.Printf("%d: %s\n", lineNumber, line)
 			}
 		}
 		if scanner.Err() != nil {
@@ -252,6 +263,63 @@ func analyzeFileContent(by []byte, filePath string, entry MyEntry, err error) {
 		}
 		fmt.Println(strings.Repeat("-", 30))
 	}
+}
+
+// NoColor ...
+var NoColor = false
+
+// Terminal styling constants
+const (
+	knrm = "\x1B[0m"
+	kred = "\x1B[31m"
+	kgrn = "\x1B[32m"
+	kyel = "\x1B[33m"
+	kblu = "\x1B[34m"
+	kmag = "\x1B[35m"
+	kcyn = "\x1B[36m"
+	kwht = "\x1B[37m"
+)
+
+func colorStr(color string, val string) string {
+	if NoColor {
+		return val
+	}
+	return color + val + knrm
+}
+
+// White ...
+func White(val string) string {
+	return colorStr(kwht, val)
+}
+
+// Cyan ...
+func Cyan(val string) string {
+	return colorStr(kcyn, val)
+}
+
+// Red ...
+func Red(val string) string {
+	return colorStr(kred, val)
+}
+
+// Blue ...
+func Blue(val string) string {
+	return colorStr(kblu, val)
+}
+
+// Yellow ...
+func Yellow(val string) string {
+	return colorStr(kyel, val)
+}
+
+// Green ...
+func Green(val string) string {
+	return colorStr(kgrn, val)
+}
+
+// Magenta ...
+func Magenta(val string) string {
+	return colorStr(kmag, val)
 }
 
 func NewFile(fileName string, processors ...Processor) FileAndProcessors {
