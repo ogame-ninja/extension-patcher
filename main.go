@@ -2,6 +2,7 @@ package extension_patcher
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
@@ -228,6 +229,22 @@ func (p *Patcher) autoAnalyse() {
 			if err := os.WriteFile(filePath, by, info.Mode()); err != nil {
 				log.Println(err)
 			}
+			scanner := bufio.NewScanner(bytes.NewReader(by))
+			lineNumber := 0
+			for scanner.Scan() {
+				lineNumber++
+				line := scanner.Text()
+
+				for _, term := range terms {
+					if strings.Contains(line, term) {
+						fmt.Printf("%d: %s\n", lineNumber, line)
+					}
+				}
+			}
+			if scanner.Err() != nil {
+				log.Println(err)
+			}
+			fmt.Println(strings.Repeat("-", 30))
 		}
 	}
 	fmt.Println(strings.Repeat("-", 80))
