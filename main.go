@@ -196,6 +196,7 @@ func (p *Patcher) autoAnalyse() {
 			"players.xml",
 			"universe.xml",
 			"highscore.xml",
+			"location.host",
 		}
 		for _, term := range terms {
 			if bytes.Contains(by, []byte(term)) {
