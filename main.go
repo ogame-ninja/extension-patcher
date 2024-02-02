@@ -52,6 +52,8 @@ type Patcher struct {
 }
 
 func New(params Params) (*Patcher, error) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
 	}
