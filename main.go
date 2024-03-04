@@ -54,6 +54,7 @@ type Patcher struct {
 
 func New(params Params) (*Patcher, error) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	webstoreURL := params.WebstoreURL
 
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
@@ -61,18 +62,25 @@ func New(params Params) (*Patcher, error) {
 	if len(params.ExpectedSha256) != 0 && len(params.ExpectedSha256) != 64 {
 		return nil, errors.New("ExpectedSha256 must be 64 characters long")
 	}
-	if params.WebstoreURL == "" {
+	if webstoreURL == "" {
 		return nil, errors.New("missing WebstoreURL")
 	}
-	if !strings.HasPrefix(params.WebstoreURL, "https://chrome.google.com/webstore/detail/") &&
-		!strings.HasPrefix(params.WebstoreURL, "https://chromewebstore.google.com/detail/") {
+	if !strings.HasPrefix(webstoreURL, "https://chrome.google.com/webstore/detail/") &&
+		!strings.HasPrefix(webstoreURL, "https://chromewebstore.google.com/detail/") &&
+		!strings.HasPrefix(webstoreURL, "https://addons.mozilla.org/") {
 		return nil, errors.New("invalid WebstoreURL")
 	}
 	// No extension name provided, extract it from the webstore url
 	if params.ExtensionName == "" {
-		rgx := regexp.MustCompile(`/detail/([^/]+)/`)
-		m := rgx.FindStringSubmatch(params.WebstoreURL)
-		params.ExtensionName = m[1]
+		if strings.Contains(webstoreURL, "google.com") {
+			rgx := regexp.MustCompile(`/detail/([^/]+)/`)
+			m := rgx.FindStringSubmatch(webstoreURL)
+			params.ExtensionName = m[1]
+		} else if strings.Contains(webstoreURL, "addons.mozilla.org") {
+			rgx := regexp.MustCompile(`/addon/([^/]+)/?`)
+			m := rgx.FindStringSubmatch(webstoreURL)
+			params.ExtensionName = m[1]
+		}
 	}
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
@@ -412,15 +420,27 @@ func parse(reader io.Reader) error {
 }
 
 func downloadExtension(webstoreURL, zipFileName string) error {
-	extensionID := getExtensionIDFromLink(webstoreURL)
-	downloadLink := buildDownloadLink(extensionID)
+	var downloadLink string
+	isChromeWebstore := false
+	if strings.Contains(webstoreURL, "google.com") {
+		extensionID := getExtensionIDFromLink(webstoreURL)
+		downloadLink = buildDownloadLink(extensionID)
+		isChromeWebstore = true
+	} else if strings.Contains(webstoreURL, "addons.mozilla.org") {
+		extensionID := getExtensionIDFromLink(webstoreURL)
+		downloadLink = "https://addons.mozilla.org/firefox/downloads/latest/" + extensionID + "/platform:3/" + extensionID + ".xpi"
+	}
+
 	resp, err := http.Get(downloadLink)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if err := parse(resp.Body); err != nil {
-		return err
+
+	if isChromeWebstore {
+		if err := parse(resp.Body); err != nil {
+			return err
+		}
 	}
 
 	// Create the file
