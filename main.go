@@ -124,7 +124,7 @@ func (p *Patcher) Start() {
 
 	extensionZipSha256 := sha256f(extensionNameZip)
 	if extensionZipSha256 != expectedSha256 {
-		fmt.Printf("invalid file from chrome app store (sha256: %s) \n", extensionZipSha256)
+		fmt.Printf("invalid file from app store (sha256: %s) \n", extensionZipSha256)
 		return
 	}
 
