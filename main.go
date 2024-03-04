@@ -23,9 +23,14 @@ import (
 )
 
 const (
-	perm              os.FileMode = 0644
-	panicOnReplaceErr             = true
-	jsExtension                   = ".js"
+	perm                  os.FileMode = 0644
+	panicOnReplaceErr                 = true
+	jsExtension                       = ".js"
+	chromeIdentifier                  = "google.com"
+	mozillaIdentifier                 = "addons.mozilla.org"
+	chromeWebstorePrefix1             = "https://chrome.google.com/webstore/detail/"
+	chromeWebstorePrefix2             = "https://chromewebstore.google.com/detail/"
+	mozillaWebstorePrefix             = "https://addons.mozilla.org/"
 )
 
 var InvalidMagicBytesErr = errors.New("invalid magic bytes")
@@ -65,22 +70,23 @@ func New(params Params) (*Patcher, error) {
 	if webstoreURL == "" {
 		return nil, errors.New("missing WebstoreURL")
 	}
-	if !strings.HasPrefix(webstoreURL, "https://chrome.google.com/webstore/detail/") &&
-		!strings.HasPrefix(webstoreURL, "https://chromewebstore.google.com/detail/") &&
-		!strings.HasPrefix(webstoreURL, "https://addons.mozilla.org/") {
+	if !strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) &&
+		!strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) &&
+		!strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
 		return nil, errors.New("invalid WebstoreURL")
 	}
 	// No extension name provided, extract it from the webstore url
 	if params.ExtensionName == "" {
-		if strings.Contains(webstoreURL, "google.com") {
-			rgx := regexp.MustCompile(`/detail/([^/]+)/`)
-			m := rgx.FindStringSubmatch(webstoreURL)
-			params.ExtensionName = m[1]
-		} else if strings.Contains(webstoreURL, "addons.mozilla.org") {
-			rgx := regexp.MustCompile(`/addon/([^/]+)/?`)
-			m := rgx.FindStringSubmatch(webstoreURL)
-			params.ExtensionName = m[1]
+		var rgx *regexp.Regexp
+		if strings.Contains(webstoreURL, chromeIdentifier) {
+			rgx = regexp.MustCompile(`/detail/([^/]+)/`)
+		} else if strings.Contains(webstoreURL, mozillaIdentifier) {
+			rgx = regexp.MustCompile(`/addon/([^/]+)/?`)
+		} else {
+			panic("unrecognized webstore")
 		}
+		m := rgx.FindStringSubmatch(webstoreURL)
+		params.ExtensionName = m[1]
 	}
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
@@ -422,11 +428,11 @@ func parse(reader io.Reader) error {
 func downloadExtension(webstoreURL, zipFileName string) error {
 	var downloadLink string
 	isChromeWebstore := false
-	if strings.Contains(webstoreURL, "google.com") {
+	if strings.Contains(webstoreURL, chromeIdentifier) {
 		extensionID := getExtensionIDFromLink(webstoreURL)
 		downloadLink = buildDownloadLink(extensionID)
 		isChromeWebstore = true
-	} else if strings.Contains(webstoreURL, "addons.mozilla.org") {
+	} else if strings.Contains(webstoreURL, mozillaIdentifier) {
 		extensionID := getExtensionIDFromLink(webstoreURL)
 		downloadLink = "https://addons.mozilla.org/firefox/downloads/latest/" + extensionID + "/platform:3/" + extensionID + ".xpi"
 	}
