@@ -26,8 +26,6 @@ const (
 	perm                  os.FileMode = 0644
 	panicOnReplaceErr                 = true
 	jsExtension                       = ".js"
-	chromeIdentifier                  = "google.com"
-	mozillaIdentifier                 = "addons.mozilla.org"
 	chromeWebstorePrefix1             = "https://chrome.google.com/webstore/detail/"
 	chromeWebstorePrefix2             = "https://chromewebstore.google.com/detail/"
 	mozillaWebstorePrefix             = "https://addons.mozilla.org/"
@@ -51,10 +49,87 @@ type Params struct {
 	DelayBeforeClose *int
 	KeepZip          bool
 	AutoAnalysis     bool
+	Webstore         Webstore
 }
 
 type Patcher struct {
 	params Params
+}
+
+type Webstore interface {
+	GetName() string
+	GetDownloadLink() string
+	ValidatePayload(reader io.Reader) error
+}
+
+func getName(webstoreURL, rgxStr string) string {
+	rgx := regexp.MustCompile(rgxStr)
+	m := rgx.FindStringSubmatch(webstoreURL)
+	return m[1]
+}
+
+type ChromeStore struct {
+	webstoreURL string
+}
+
+func (s *ChromeStore) GetDownloadLink() string {
+	extensionID := getExtensionIDFromLink(s.webstoreURL)
+	return buildDownloadLink(extensionID)
+}
+
+func (s *ChromeStore) GetName() string {
+	return getName(s.webstoreURL, `/detail/([^/]+)/`)
+}
+
+func (s *ChromeStore) ValidatePayload(reader io.Reader) error {
+	const magicBytes = 0x43723234 // Cr24
+	var magic uint32
+	if err := binary.Read(reader, binary.BigEndian, &magic); err != nil {
+		return err
+	}
+	if magic != magicBytes {
+		return InvalidMagicBytesErr
+	}
+	var version uint32
+	if err := binary.Read(reader, binary.BigEndian, &version); err != nil {
+		return err
+	}
+	var headerLength uint32
+	if err := binary.Read(reader, binary.LittleEndian, &headerLength); err != nil {
+		return err
+	}
+	buf := make([]byte, headerLength)
+	if _, err := reader.Read(buf); err != nil {
+		return err
+	}
+	return nil
+}
+
+type MozillaStore struct {
+	webstoreURL string
+}
+
+func (s *MozillaStore) GetName() string {
+	return getName(s.webstoreURL, `/addon/([^/]+)/?`)
+}
+
+func (s *MozillaStore) GetDownloadLink() string {
+	extensionID := getExtensionIDFromLink(s.webstoreURL)
+	return "https://addons.mozilla.org/firefox/downloads/latest/" + extensionID + "/platform:3/" + extensionID + ".xpi"
+}
+
+func (s *MozillaStore) ValidatePayload(_ io.Reader) error { return nil }
+
+var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
+
+func NewStore(webstoreURL string) (Webstore, error) {
+	if strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) ||
+		strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) {
+		return &ChromeStore{webstoreURL: webstoreURL}, nil
+	} else if strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
+		return &MozillaStore{webstoreURL: webstoreURL}, nil
+	}
+	return nil, ErrInvalidWebstoreURL
 }
 
 func New(params Params) (*Patcher, error) {
@@ -70,23 +145,14 @@ func New(params Params) (*Patcher, error) {
 	if webstoreURL == "" {
 		return nil, errors.New("missing WebstoreURL")
 	}
-	if !strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) &&
-		!strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) &&
-		!strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
-		return nil, errors.New("invalid WebstoreURL")
+	webstore, err := NewStore(webstoreURL)
+	if err != nil {
+		return nil, err
 	}
+	params.Webstore = webstore
 	// No extension name provided, extract it from the webstore url
 	if params.ExtensionName == "" {
-		var rgx *regexp.Regexp
-		if strings.Contains(webstoreURL, chromeIdentifier) {
-			rgx = regexp.MustCompile(`/detail/([^/]+)/`)
-		} else if strings.Contains(webstoreURL, mozillaIdentifier) {
-			rgx = regexp.MustCompile(`/addon/([^/]+)/?`)
-		} else {
-			panic("unrecognized webstore")
-		}
-		m := rgx.FindStringSubmatch(webstoreURL)
-		params.ExtensionName = m[1]
+		params.ExtensionName = webstore.GetName()
 	}
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
@@ -116,13 +182,13 @@ func (p *Patcher) Start() {
 	}
 
 	extensionName := p.params.ExtensionName
-	webstoreURL := p.params.WebstoreURL
+	webstore := p.params.Webstore
 	expectedSha256 := p.params.ExpectedSha256
 
 	extensionNameZip := extensionName + ".zip"
 
 	if !fileExists(extensionNameZip) {
-		if err := downloadExtension(webstoreURL, extensionNameZip); err != nil {
+		if err := downloadExtension(webstore, extensionNameZip); err != nil {
 			panic(err)
 		}
 		fmt.Println("extension downloaded")
@@ -305,8 +371,11 @@ func processLine(line string, terms []string) string {
 	return replacer.Replace(line)
 }
 
+func True() bool  { return true }
+func False() bool { return false }
+
 // NoColor ...
-var NoColor = false
+var NoColor = False()
 
 // Terminal styling constants
 const (
@@ -401,41 +470,8 @@ func buildDownloadLink(extensionID string) string {
 		"x=id%3D" + extensionID + "%26installsource%3Dondemand%26uc"
 }
 
-func parse(reader io.Reader) error {
-	const magicBytes = 0x43723234 // Cr24
-	var magic uint32
-	if err := binary.Read(reader, binary.BigEndian, &magic); err != nil {
-		return err
-	}
-	if magic != magicBytes {
-		return InvalidMagicBytesErr
-	}
-	var version uint32
-	if err := binary.Read(reader, binary.BigEndian, &version); err != nil {
-		return err
-	}
-	var headerLength uint32
-	if err := binary.Read(reader, binary.LittleEndian, &headerLength); err != nil {
-		return err
-	}
-	buf := make([]byte, headerLength)
-	if _, err := reader.Read(buf); err != nil {
-		return err
-	}
-	return nil
-}
-
-func downloadExtension(webstoreURL, zipFileName string) error {
-	var downloadLink string
-	isChromeWebstore := false
-	if strings.Contains(webstoreURL, chromeIdentifier) {
-		extensionID := getExtensionIDFromLink(webstoreURL)
-		downloadLink = buildDownloadLink(extensionID)
-		isChromeWebstore = true
-	} else if strings.Contains(webstoreURL, mozillaIdentifier) {
-		extensionID := getExtensionIDFromLink(webstoreURL)
-		downloadLink = "https://addons.mozilla.org/firefox/downloads/latest/" + extensionID + "/platform:3/" + extensionID + ".xpi"
-	}
+func downloadExtension(webstore Webstore, zipFileName string) error {
+	downloadLink := webstore.GetDownloadLink()
 
 	resp, err := http.Get(downloadLink)
 	if err != nil {
@@ -443,10 +479,8 @@ func downloadExtension(webstoreURL, zipFileName string) error {
 	}
 	defer resp.Body.Close()
 
-	if isChromeWebstore {
-		if err := parse(resp.Body); err != nil {
-			return err
-		}
+	if err := webstore.ValidatePayload(resp.Body); err != nil {
+		return err
 	}
 
 	// Create the file
