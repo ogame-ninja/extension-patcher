@@ -247,6 +247,17 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
+func copyFile(src string, dst string) {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		panic(err)
+	}
+	err = os.WriteFile(dst, data, perm)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (p *Patcher) processFile(filename string, processors []Processor, maxLen int) {
 	filePath := filepath.Join(p.params.ExtensionName, filename)
 	by, err := os.ReadFile(filePath)
