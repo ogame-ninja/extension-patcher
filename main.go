@@ -208,7 +208,7 @@ func (p *Patcher) Start() {
 
 	if isOpenUserJSStore {
 		_ = os.Mkdir(extensionName, 0755)
-		extensionNameZip = filepath.Join(extensionName, extensionName+".user.js")
+		extensionNameZip = filepath.Join(extensionName, extensionName+".user.js.orig")
 	}
 
 	if !fileExists(extensionNameZip) {
@@ -224,14 +224,17 @@ func (p *Patcher) Start() {
 		return
 	}
 
-	if !isOpenUserJSStore {
+	if isOpenUserJSStore {
+		if err := copyFile(extensionNameZip, strings.TrimSuffix(extensionNameZip, ".orig")); err != nil {
+			panic(err)
+		}
+	} else {
 		if err := unzip(extensionNameZip, extensionName); err != nil {
 			panic(err)
 		}
-
-		if !p.params.KeepZip {
-			_ = os.Remove(extensionNameZip)
-		}
+	}
+	if !p.params.KeepZip {
+		_ = os.Remove(extensionNameZip)
 	}
 
 	if p.params.AutoAnalysis {
@@ -247,15 +250,12 @@ func (p *Patcher) Start() {
 	fmt.Println("Done. code generated in " + path)
 }
 
-func copyFile(src string, dst string) {
+func copyFile(src string, dst string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	err = os.WriteFile(dst, data, perm)
-	if err != nil {
-		panic(err)
-	}
+	return os.WriteFile(dst, data, perm)
 }
 
 func (p *Patcher) processFile(filename string, processors []Processor, maxLen int) {
