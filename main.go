@@ -29,6 +29,7 @@ const (
 	chromeWebstorePrefix1             = "https://chrome.google.com/webstore/detail/"
 	chromeWebstorePrefix2             = "https://chromewebstore.google.com/detail/"
 	mozillaWebstorePrefix             = "https://addons.mozilla.org/"
+	openUserJSPrefix                  = "https://openuserjs.org/install/"
 )
 
 var InvalidMagicBytesErr = errors.New("invalid magic bytes")
@@ -120,6 +121,20 @@ func (s *MozillaStore) GetDownloadLink() string {
 
 func (s *MozillaStore) ValidatePayload(_ io.Reader) error { return nil }
 
+type OpenUserJSStore struct {
+	webstoreURL string
+}
+
+func (s *OpenUserJSStore) GetName() string {
+	return getName(s.webstoreURL, `/install/[^/]+/([^.]+).user.js`)
+}
+
+func (s *OpenUserJSStore) GetDownloadLink() string {
+	return s.webstoreURL
+}
+
+func (s *OpenUserJSStore) ValidatePayload(_ io.Reader) error { return nil }
+
 var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
 
 func NewStore(webstoreURL string) (Webstore, error) {
@@ -128,6 +143,8 @@ func NewStore(webstoreURL string) (Webstore, error) {
 		return &ChromeStore{webstoreURL: webstoreURL}, nil
 	} else if strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
 		return &MozillaStore{webstoreURL: webstoreURL}, nil
+	} else if strings.HasPrefix(webstoreURL, openUserJSPrefix) {
+		return &OpenUserJSStore{webstoreURL: webstoreURL}, nil
 	}
 	return nil, ErrInvalidWebstoreURL
 }
@@ -185,7 +202,14 @@ func (p *Patcher) Start() {
 	webstore := p.params.Webstore
 	expectedSha256 := p.params.ExpectedSha256
 
+	_, isOpenUserJSStore := webstore.(*OpenUserJSStore)
+
 	extensionNameZip := extensionName + ".zip"
+
+	if isOpenUserJSStore {
+		_ = os.Mkdir(extensionName, 0755)
+		extensionNameZip = filepath.Join(extensionName, extensionName+".user.js")
+	}
 
 	if !fileExists(extensionNameZip) {
 		if err := downloadExtension(webstore, extensionNameZip); err != nil {
@@ -200,12 +224,14 @@ func (p *Patcher) Start() {
 		return
 	}
 
-	if err := unzip(extensionNameZip, extensionName); err != nil {
-		panic(err)
-	}
+	if !isOpenUserJSStore {
+		if err := unzip(extensionNameZip, extensionName); err != nil {
+			panic(err)
+		}
 
-	if !p.params.KeepZip {
-		_ = os.Remove(extensionNameZip)
+		if !p.params.KeepZip {
+			_ = os.Remove(extensionNameZip)
+		}
 	}
 
 	if p.params.AutoAnalysis {
