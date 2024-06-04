@@ -31,6 +31,7 @@ const (
 	chromeWebstorePrefix2             = "https://chromewebstore.google.com/detail/"
 	mozillaWebstorePrefix             = "https://addons.mozilla.org/"
 	openUserJSPrefix                  = "https://openuserjs.org/install/"
+	githubPrefix                      = "https://github.com/"
 )
 
 var InvalidMagicBytesErr = errors.New("invalid magic bytes")
@@ -136,6 +137,20 @@ func (s *OpenUserJSStore) GetDownloadLink() string {
 
 func (s *OpenUserJSStore) ValidatePayload(_ io.Reader) error { return nil }
 
+type GithubStore struct {
+	webstoreURL string
+}
+
+func (s *GithubStore) GetName() string {
+	return getName(s.webstoreURL, `/([^/]+)/`)
+}
+
+func (s *GithubStore) GetDownloadLink() string {
+	return s.webstoreURL
+}
+
+func (s *GithubStore) ValidatePayload(_ io.Reader) error { return nil }
+
 var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
 
 func NewStore(webstoreURL string) (Webstore, error) {
@@ -146,6 +161,8 @@ func NewStore(webstoreURL string) (Webstore, error) {
 		return &MozillaStore{webstoreURL: webstoreURL}, nil
 	} else if strings.HasPrefix(webstoreURL, openUserJSPrefix) {
 		return &OpenUserJSStore{webstoreURL: webstoreURL}, nil
+	} else if strings.HasPrefix(webstoreURL, githubPrefix) {
+		return &GithubStore{webstoreURL: webstoreURL}, nil
 	}
 	return nil, ErrInvalidWebstoreURL
 }
