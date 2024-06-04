@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -193,8 +194,12 @@ func (p *Patcher) Start() {
 	delayBeforeClose := p.params.DelayBeforeClose
 	if delayBeforeClose != nil {
 		defer func() {
-			// This is useful on windows because the default CMD window closes immediately
-			time.Sleep(time.Duration(*delayBeforeClose) * time.Second)
+			if r := recover(); r != nil {
+				fmt.Println(r, "\n", string(debug.Stack()))
+			} else {
+				// This is useful on windows because the default CMD window closes immediately
+				time.Sleep(time.Duration(*delayBeforeClose) * time.Second)
+			}
 		}()
 	}
 
