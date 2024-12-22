@@ -529,7 +529,7 @@ func getExtensionIDFromLink(link string) string {
 
 func buildDownloadLink(extensionID string) string {
 	return "https://clients2.google.com/service/update2/crx?" +
-		"response=redirect&prodversion=49.0&acceptformat=crx3&" +
+		"response=redirect&prodversion=131.0.0.0&acceptformat=crx3&" +
 		"x=id%3D" + extensionID + "%26installsource%3Dondemand%26uc"
 }
 
