@@ -46,7 +46,6 @@ type Params struct {
 	ExtensionName    string // infinity
 	ExpectedSha256   string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
 	WebstoreURL      string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
-	ZipFile          bool
 	Files            []FileAndProcessors
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
@@ -170,7 +169,6 @@ func NewStore(webstoreURL string) (Webstore, error) {
 func New(params Params) (*Patcher, error) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	webstoreURL := params.WebstoreURL
-	zipFile := params.ZipFile
 
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
@@ -178,20 +176,18 @@ func New(params Params) (*Patcher, error) {
 	if len(params.ExpectedSha256) != 0 && len(params.ExpectedSha256) != 64 {
 		return nil, errors.New("ExpectedSha256 must be 64 characters long")
 	}
-	if webstoreURL == "" && !zipFile {
-		return nil, errors.New("missing WebstoreURL/ZipFile")
+	if webstoreURL == "" {
+		return nil, errors.New("missing WebstoreURL")
 	}
-	if webstoreURL != "" {
-		webstore, err := NewStore(webstoreURL)
-		if err != nil {
-			return nil, err
-		}
-		// No extension name provided, extract it from the webstore url
-		if params.ExtensionName == "" {
-			params.ExtensionName = webstore.GetName()
-		}
-		params.Webstore = webstore
+	webstore, err := NewStore(webstoreURL)
+	if err != nil {
+		return nil, err
 	}
+	// No extension name provided, extract it from the webstore url
+	if params.ExtensionName == "" {
+		params.ExtensionName = webstore.GetName()
+	}
+	params.Webstore = webstore
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
 	}
