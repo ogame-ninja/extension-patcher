@@ -4,8 +4,6 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/ogame-ninja/extension-patcher/pkg/stores"
@@ -153,26 +151,26 @@ func (p *Patcher) Start() {
 	}
 
 	if isFileStore {
-	} else if !fileExists(extensionNameZip) {
+	} else if !utils.FileExists(extensionNameZip) {
 		if err := downloadExtension(webstore, extensionNameZip); err != nil {
 			panic(err)
 		}
 		fmt.Println("extension downloaded")
 	}
 
-	extensionZipSha256 := sha256f(extensionNameZip)
+	extensionZipSha256 := utils.Sha256f(extensionNameZip)
 	if extensionZipSha256 != expectedSha256 {
 		fmt.Printf("invalid sha256 for %s (sha256: %s) \n", extensionNameZip, extensionZipSha256)
 		return
 	}
 
 	if isOpenUserJSStore {
-		if err := copyFile(extensionNameZip, strings.TrimSuffix(extensionNameZip, ".orig")); err != nil {
+		if err := utils.CopyFile(extensionNameZip, strings.TrimSuffix(extensionNameZip, ".orig")); err != nil {
 			panic(err)
 		}
 	} else {
 		if isFileStore && !strings.HasSuffix(extensionNameZip, ".zip") {
-			if err := copyFile(extensionNameZip, filepath.Join(extensionName, extensionNameZip)); err != nil {
+			if err := utils.CopyFile(extensionNameZip, filepath.Join(extensionName, extensionNameZip)); err != nil {
 				panic(err)
 			}
 		} else {
@@ -196,14 +194,6 @@ func (p *Patcher) Start() {
 		panic(err)
 	}
 	fmt.Println("Done. code generated in " + path)
-}
-
-func copyFile(src string, dst string) error {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dst, data, perm)
 }
 
 func (p *Patcher) processFile(filename string, processors []Processor, maxLen int) {
@@ -356,11 +346,8 @@ func processLine(line string, terms []string) string {
 	return replacer.Replace(line)
 }
 
-func True() bool  { return true }
-func False() bool { return false }
-
 // NoColor ...
-var NoColor = False()
+var NoColor = utils.False()
 
 // Terminal styling constants
 const (
@@ -428,19 +415,6 @@ func JsBeautify(in []byte) []byte {
 		panic(err)
 	}
 	return processed
-}
-
-func sha256f(filename string) string {
-	h := sha256.New()
-	f, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	if _, err := io.Copy(h, f); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 func downloadExtension(webstore Webstore, zipFileName string) error {
@@ -516,16 +490,6 @@ func unzip(src string, dst string) error {
 		return fmt.Errorf("zip file is empty")
 	}
 	return nil
-}
-
-// fileExists checks if a file exists and is not a directory before we
-// try using it to prevent further errors.
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
 }
 
 // MustReplace replace "n" occurrences of old with new
