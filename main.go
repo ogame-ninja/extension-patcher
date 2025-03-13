@@ -368,40 +368,13 @@ func colorStr(color string, val string) string {
 	return color + val + knrm
 }
 
-// White ...
-func White(val string) string {
-	return colorStr(kwht, val)
-}
-
-// Cyan ...
-func Cyan(val string) string {
-	return colorStr(kcyn, val)
-}
-
-// Red ...
-func Red(val string) string {
-	return colorStr(kred, val)
-}
-
-// Blue ...
-func Blue(val string) string {
-	return colorStr(kblu, val)
-}
-
-// Yellow ...
-func Yellow(val string) string {
-	return colorStr(kyel, val)
-}
-
-// Green ...
-func Green(val string) string {
-	return colorStr(kgrn, val)
-}
-
-// Magenta ...
-func Magenta(val string) string {
-	return colorStr(kmag, val)
-}
+func White(val string) string   { return colorStr(kwht, val) }
+func Cyan(val string) string    { return colorStr(kcyn, val) }
+func Red(val string) string     { return colorStr(kred, val) }
+func Blue(val string) string    { return colorStr(kblu, val) }
+func Yellow(val string) string  { return colorStr(kyel, val) }
+func Green(val string) string   { return colorStr(kgrn, val) }
+func Magenta(val string) string { return colorStr(kmag, val) }
 
 func NewFile(fileName string, processors ...Processor) FileAndProcessors {
 	return FileAndProcessors{FileName: fileName, Processors: processors}
