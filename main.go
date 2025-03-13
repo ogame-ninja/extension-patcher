@@ -196,8 +196,7 @@ func New(params Params) (*Patcher, error) {
 		return nil, errors.New("missing Files")
 	}
 	if params.DelayBeforeClose == nil {
-		params.DelayBeforeClose = new(int)
-		*params.DelayBeforeClose = 5
+		params.DelayBeforeClose = Int(5)
 	}
 	return &Patcher{params: params}, nil
 }
