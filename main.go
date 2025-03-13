@@ -464,8 +464,7 @@ func unzip(src string, dst string) error {
 // MustReplace replace "n" occurrences of old with new
 // If there are fewer occurrences of old than "n", panic
 func MustReplace(in []byte, old, new string, n int) (out []byte) {
-	out, _ = mustReplace2(in, old, new, n)
-	return out
+	return utils.First(mustReplace2(in, old, new, n))
 }
 
 // Replace "n" occurrences of old with new

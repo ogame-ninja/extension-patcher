@@ -65,3 +65,5 @@ func Ternary[T any](predicate bool, a, b T) T {
 func Or[T comparable](a, b T) (zero T) {
 	return Ternary(a != zero, a, b)
 }
+
+func First[T any](a T, _ ...any) T { return a }
