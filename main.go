@@ -68,15 +68,15 @@ var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
 func NewStore(webstoreURL string) (Webstore, error) {
 	if strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) ||
 		strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) {
-		return &stores.ChromeStore{BaseStore: stores.BaseStore{WebstoreURL: webstoreURL}}, nil
+		return stores.NewChromeStore(webstoreURL), nil
 	} else if strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
-		return &stores.MozillaStore{BaseStore: stores.BaseStore{WebstoreURL: webstoreURL}}, nil
+		return stores.NewMozillaStore(webstoreURL), nil
 	} else if strings.HasPrefix(webstoreURL, openUserJSPrefix) {
-		return &stores.OpenUserJSStore{BaseStore: stores.BaseStore{WebstoreURL: webstoreURL}}, nil
+		return stores.NewOpenUserJSStore(webstoreURL), nil
 	} else if strings.HasPrefix(webstoreURL, githubPrefix) {
-		return &stores.GithubStore{BaseStore: stores.BaseStore{WebstoreURL: webstoreURL}}, nil
+		return stores.NewGithubStore(webstoreURL), nil
 	} else if !strings.HasPrefix(webstoreURL, "http") {
-		return &stores.FileStore{BaseStore: stores.BaseStore{WebstoreURL: webstoreURL}}, nil
+		return stores.NewFileStore(webstoreURL), nil
 	}
 	return nil, ErrInvalidWebstoreURL
 }

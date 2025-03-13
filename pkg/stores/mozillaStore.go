@@ -1,5 +1,9 @@
 package stores
 
+func NewMozillaStore(webstoreURL string) *MozillaStore {
+	return &MozillaStore{BaseStore: BaseStore{WebstoreURL: webstoreURL}}
+}
+
 type MozillaStore struct {
 	BaseStore
 }

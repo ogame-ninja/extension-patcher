@@ -6,6 +6,10 @@ import (
 	"io"
 )
 
+func NewChromeStore(webstoreURL string) *ChromeStore {
+	return &ChromeStore{BaseStore: BaseStore{WebstoreURL: webstoreURL}}
+}
+
 type ChromeStore struct {
 	BaseStore
 }
