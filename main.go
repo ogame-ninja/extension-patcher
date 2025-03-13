@@ -151,6 +151,20 @@ func (s *GithubStore) GetDownloadLink() string {
 
 func (s *GithubStore) ValidatePayload(_ io.Reader) error { return nil }
 
+type FileStore struct {
+	webstoreURL string
+}
+
+func (s *FileStore) GetName() string {
+	return ""
+}
+
+func (s *FileStore) GetDownloadLink() string {
+	return s.webstoreURL
+}
+
+func (s *FileStore) ValidatePayload(_ io.Reader) error { return nil }
+
 var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
 
 func NewStore(webstoreURL string) (Webstore, error) {
@@ -163,6 +177,8 @@ func NewStore(webstoreURL string) (Webstore, error) {
 		return &OpenUserJSStore{webstoreURL: webstoreURL}, nil
 	} else if strings.HasPrefix(webstoreURL, githubPrefix) {
 		return &GithubStore{webstoreURL: webstoreURL}, nil
+	} else if !strings.HasPrefix(webstoreURL, "http") {
+		return &FileStore{webstoreURL: webstoreURL}, nil
 	}
 	return nil, ErrInvalidWebstoreURL
 }
@@ -228,15 +244,20 @@ func (p *Patcher) Start() {
 	expectedSha256 := p.params.ExpectedSha256
 
 	_, isOpenUserJSStore := webstore.(*OpenUserJSStore)
+	_, isFileStore := webstore.(*FileStore)
 
 	extensionNameZip := extensionName + ".zip"
 
 	if isOpenUserJSStore {
 		_ = os.Mkdir(extensionName, 0755)
 		extensionNameZip = filepath.Join(extensionName, extensionName+".user.js.orig")
+	} else if isFileStore {
+		_ = os.Mkdir(extensionName, 0755)
+		extensionNameZip = webstore.GetDownloadLink()
 	}
 
-	if !fileExists(extensionNameZip) {
+	if isFileStore {
+	} else if !fileExists(extensionNameZip) {
 		if err := downloadExtension(webstore, extensionNameZip); err != nil {
 			panic(err)
 		}
@@ -254,8 +275,14 @@ func (p *Patcher) Start() {
 			panic(err)
 		}
 	} else {
-		if err := unzip(extensionNameZip, extensionName); err != nil {
-			panic(err)
+		if isFileStore && !strings.HasSuffix(extensionNameZip, ".zip") {
+			if err := copyFile(extensionNameZip, filepath.Join(extensionName, extensionNameZip)); err != nil {
+				panic(err)
+			}
+		} else {
+			if err := unzip(extensionNameZip, extensionName); err != nil {
+				panic(err)
+			}
 		}
 	}
 	if !p.params.KeepZip {
