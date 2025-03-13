@@ -50,7 +50,7 @@ type Params struct {
 	Files            []FileAndProcessors
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
-	KeepZip          bool
+	KeepZip          bool // Either or not to keep the original file
 	AutoAnalysis     bool
 	Webstore         Webstore
 }
