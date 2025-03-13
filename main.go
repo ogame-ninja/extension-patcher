@@ -5,17 +5,17 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ogame-ninja/extension-patcher/pkg/stores"
+	"github.com/ogame-ninja/extension-patcher/pkg/utils"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -33,7 +33,8 @@ const (
 	githubPrefix                      = "https://github.com/"
 )
 
-var InvalidMagicBytesErr = errors.New("invalid magic bytes")
+// Int re-export the Int function
+var Int = utils.Int
 
 type Processor func([]byte) []byte
 
@@ -64,104 +65,20 @@ type Webstore interface {
 	ValidatePayload(reader io.Reader) error
 }
 
-func getName(webstoreURL, rgxStr string) string {
-	rgx := regexp.MustCompile(rgxStr)
-	m := rgx.FindStringSubmatch(webstoreURL)
-	return m[1]
-}
-
-type baseStore struct {
-	WebstoreURL string
-}
-
-func (b baseStore) GetName() string                 { return "" }
-func (b baseStore) GetDownloadLink() string         { return b.WebstoreURL }
-func (b baseStore) ValidatePayload(io.Reader) error { return nil }
-
-type ChromeStore struct {
-	baseStore
-}
-
-func (s *ChromeStore) GetDownloadLink() string {
-	extensionID := getExtensionIDFromLink(s.WebstoreURL)
-	return buildDownloadLink(extensionID)
-}
-
-func (s *ChromeStore) GetName() string {
-	return getName(s.WebstoreURL, `/detail/([^/]+)/`)
-}
-
-func (s *ChromeStore) ValidatePayload(reader io.Reader) error {
-	const magicBytes = 0x43723234 // Cr24
-	var magic uint32
-	if err := binary.Read(reader, binary.BigEndian, &magic); err != nil {
-		return err
-	}
-	if magic != magicBytes {
-		return InvalidMagicBytesErr
-	}
-	var version uint32
-	if err := binary.Read(reader, binary.BigEndian, &version); err != nil {
-		return err
-	}
-	var headerLength uint32
-	if err := binary.Read(reader, binary.LittleEndian, &headerLength); err != nil {
-		return err
-	}
-	buf := make([]byte, headerLength)
-	if _, err := reader.Read(buf); err != nil {
-		return err
-	}
-	return nil
-}
-
-type MozillaStore struct {
-	baseStore
-}
-
-func (s *MozillaStore) GetName() string {
-	return getName(s.WebstoreURL, `/addon/([^/]+)/?`)
-}
-
-func (s *MozillaStore) GetDownloadLink() string {
-	extensionID := getExtensionIDFromLink(s.WebstoreURL)
-	return "https://addons.mozilla.org/firefox/downloads/latest/" + extensionID + "/platform:3/" + extensionID + ".xpi"
-}
-
-type OpenUserJSStore struct {
-	baseStore
-}
-
-func (s *OpenUserJSStore) GetName() string {
-	return getName(s.WebstoreURL, `/install/[^/]+/([^.]+).user.js`)
-}
-
-type GithubStore struct {
-	baseStore
-}
-
-func (s *GithubStore) GetName() string {
-	return getName(s.WebstoreURL, `/([^/]+)/`)
-}
-
-type FileStore struct {
-	baseStore
-}
-
 var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
 
 func NewStore(webstoreURL string) (Webstore, error) {
 	if strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) ||
 		strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) {
-		return &ChromeStore{baseStore{WebstoreURL: webstoreURL}}, nil
+		return &stores.ChromeStore{stores.BaseStore{WebstoreURL: webstoreURL}}, nil
 	} else if strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
-		return &MozillaStore{baseStore{WebstoreURL: webstoreURL}}, nil
+		return &stores.MozillaStore{stores.BaseStore{WebstoreURL: webstoreURL}}, nil
 	} else if strings.HasPrefix(webstoreURL, openUserJSPrefix) {
-		return &OpenUserJSStore{baseStore{WebstoreURL: webstoreURL}}, nil
+		return &stores.OpenUserJSStore{stores.BaseStore{WebstoreURL: webstoreURL}}, nil
 	} else if strings.HasPrefix(webstoreURL, githubPrefix) {
-		return &GithubStore{baseStore{WebstoreURL: webstoreURL}}, nil
+		return &stores.GithubStore{stores.BaseStore{WebstoreURL: webstoreURL}}, nil
 	} else if !strings.HasPrefix(webstoreURL, "http") {
-		return &FileStore{baseStore{WebstoreURL: webstoreURL}}, nil
+		return &stores.FileStore{stores.BaseStore{WebstoreURL: webstoreURL}}, nil
 	}
 	return nil, ErrInvalidWebstoreURL
 }
@@ -222,8 +139,8 @@ func (p *Patcher) Start() {
 	webstore := p.params.Webstore
 	expectedSha256 := p.params.ExpectedSha256
 
-	_, isOpenUserJSStore := webstore.(*OpenUserJSStore)
-	_, isFileStore := webstore.(*FileStore)
+	_, isOpenUserJSStore := webstore.(*stores.OpenUserJSStore)
+	_, isFileStore := webstore.(*stores.FileStore)
 
 	extensionNameZip := extensionName + ".zip"
 
@@ -526,18 +443,6 @@ func sha256f(filename string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func getExtensionIDFromLink(link string) string {
-	link = strings.Trim(link, "/")
-	parts := strings.Split(link, "/")
-	return parts[len(parts)-1]
-}
-
-func buildDownloadLink(extensionID string) string {
-	return "https://clients2.google.com/service/update2/crx?" +
-		"response=redirect&prodversion=131.0.0.0&acceptformat=crx3&" +
-		"x=id%3D" + extensionID + "%26installsource%3Dondemand%26uc"
-}
-
 func downloadExtension(webstore Webstore, zipFileName string) error {
 	downloadLink := webstore.GetDownloadLink()
 
@@ -680,9 +585,4 @@ func mustReplaceStr(in, old, new string, n int) (out string) {
 // Helper functions, useful for tests
 func mustReplaceNStr(in, old, new string, n int) string {
 	return string(MustReplaceN([]byte(in), old, new, n))
-}
-
-func Int(v int) *int {
-	tmp := v
-	return &tmp
 }
