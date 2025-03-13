@@ -99,15 +99,11 @@ func New(params Params) (*Patcher, error) {
 		return nil, err
 	}
 	// No extension name provided, extract it from the webstore url
-	if params.ExtensionName == "" {
-		params.ExtensionName = webstore.GetName()
-	}
+	params.ExtensionName = utils.Or(params.ExtensionName, webstore.GetName())
+	params.DelayBeforeClose = utils.Or(params.DelayBeforeClose, Int(5))
 	params.Webstore = webstore
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
-	}
-	if params.DelayBeforeClose == nil {
-		params.DelayBeforeClose = Int(5)
 	}
 	return &Patcher{params: params}, nil
 }

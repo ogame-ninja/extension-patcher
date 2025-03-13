@@ -52,3 +52,16 @@ func Sha256f(filename string) string {
 
 func True() bool  { return true }
 func False() bool { return false }
+
+// Ternary ...
+func Ternary[T any](predicate bool, a, b T) T {
+	if predicate {
+		return a
+	}
+	return b
+}
+
+// Or return "a" if it is non-zero otherwise "b"
+func Or[T comparable](a, b T) (zero T) {
+	return Ternary(a != zero, a, b)
+}
