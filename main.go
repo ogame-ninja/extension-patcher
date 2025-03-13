@@ -71,17 +71,25 @@ func getName(webstoreURL, rgxStr string) string {
 	return m[1]
 }
 
+type baseStore struct {
+	WebstoreURL string
+}
+
+func (b baseStore) GetName() string                 { return "" }
+func (b baseStore) GetDownloadLink() string         { return b.WebstoreURL }
+func (b baseStore) ValidatePayload(io.Reader) error { return nil }
+
 type ChromeStore struct {
-	webstoreURL string
+	baseStore
 }
 
 func (s *ChromeStore) GetDownloadLink() string {
-	extensionID := getExtensionIDFromLink(s.webstoreURL)
+	extensionID := getExtensionIDFromLink(s.WebstoreURL)
 	return buildDownloadLink(extensionID)
 }
 
 func (s *ChromeStore) GetName() string {
-	return getName(s.webstoreURL, `/detail/([^/]+)/`)
+	return getName(s.WebstoreURL, `/detail/([^/]+)/`)
 }
 
 func (s *ChromeStore) ValidatePayload(reader io.Reader) error {
@@ -109,76 +117,52 @@ func (s *ChromeStore) ValidatePayload(reader io.Reader) error {
 }
 
 type MozillaStore struct {
-	webstoreURL string
+	baseStore
 }
 
 func (s *MozillaStore) GetName() string {
-	return getName(s.webstoreURL, `/addon/([^/]+)/?`)
+	return getName(s.WebstoreURL, `/addon/([^/]+)/?`)
 }
 
 func (s *MozillaStore) GetDownloadLink() string {
-	extensionID := getExtensionIDFromLink(s.webstoreURL)
+	extensionID := getExtensionIDFromLink(s.WebstoreURL)
 	return "https://addons.mozilla.org/firefox/downloads/latest/" + extensionID + "/platform:3/" + extensionID + ".xpi"
 }
 
-func (s *MozillaStore) ValidatePayload(_ io.Reader) error { return nil }
-
 type OpenUserJSStore struct {
-	webstoreURL string
+	baseStore
 }
 
 func (s *OpenUserJSStore) GetName() string {
-	return getName(s.webstoreURL, `/install/[^/]+/([^.]+).user.js`)
+	return getName(s.WebstoreURL, `/install/[^/]+/([^.]+).user.js`)
 }
-
-func (s *OpenUserJSStore) GetDownloadLink() string {
-	return s.webstoreURL
-}
-
-func (s *OpenUserJSStore) ValidatePayload(_ io.Reader) error { return nil }
 
 type GithubStore struct {
-	webstoreURL string
+	baseStore
 }
 
 func (s *GithubStore) GetName() string {
-	return getName(s.webstoreURL, `/([^/]+)/`)
+	return getName(s.WebstoreURL, `/([^/]+)/`)
 }
-
-func (s *GithubStore) GetDownloadLink() string {
-	return s.webstoreURL
-}
-
-func (s *GithubStore) ValidatePayload(_ io.Reader) error { return nil }
 
 type FileStore struct {
-	webstoreURL string
+	baseStore
 }
-
-func (s *FileStore) GetName() string {
-	return ""
-}
-
-func (s *FileStore) GetDownloadLink() string {
-	return s.webstoreURL
-}
-
-func (s *FileStore) ValidatePayload(_ io.Reader) error { return nil }
 
 var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
 
 func NewStore(webstoreURL string) (Webstore, error) {
 	if strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) ||
 		strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) {
-		return &ChromeStore{webstoreURL: webstoreURL}, nil
+		return &ChromeStore{baseStore{WebstoreURL: webstoreURL}}, nil
 	} else if strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
-		return &MozillaStore{webstoreURL: webstoreURL}, nil
+		return &MozillaStore{baseStore{WebstoreURL: webstoreURL}}, nil
 	} else if strings.HasPrefix(webstoreURL, openUserJSPrefix) {
-		return &OpenUserJSStore{webstoreURL: webstoreURL}, nil
+		return &OpenUserJSStore{baseStore{WebstoreURL: webstoreURL}}, nil
 	} else if strings.HasPrefix(webstoreURL, githubPrefix) {
-		return &GithubStore{webstoreURL: webstoreURL}, nil
+		return &GithubStore{baseStore{WebstoreURL: webstoreURL}}, nil
 	} else if !strings.HasPrefix(webstoreURL, "http") {
-		return &FileStore{webstoreURL: webstoreURL}, nil
+		return &FileStore{baseStore{WebstoreURL: webstoreURL}}, nil
 	}
 	return nil, ErrInvalidWebstoreURL
 }
