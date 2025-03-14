@@ -296,6 +296,12 @@ func MustReplace(in []byte, old, new string, n int) (out []byte) {
 	return utils.First(mustReplace(in, old, new, n))
 }
 
+// MustReplaceN replace all "n" occurrences of old with new
+// If there are fewer/more occurrences of old than n, panic
+func MustReplaceN(in []byte, old, new string, n int) []byte {
+	return mustReplaceN(in, old, new, n)
+}
+
 // Replace "n" occurrences of old with new
 // Return the last index of the replaced text
 func mustReplace(in []byte, old, new string, n int) (out []byte, lastIdx int) {
@@ -322,22 +328,28 @@ func mustReplace(in []byte, old, new string, n int) (out []byte, lastIdx int) {
 	return out, lastIdx
 }
 
-// MustReplaceN replace all "n" occurrences of old with new
-// If there are fewer/more occurrences of old than n, panic
-func MustReplaceN(in []byte, old, new string, n int) []byte {
+func replaceN(in []byte, old, new string, n int) ([]byte, error) {
 	out, lastIdx := mustReplace(in, old, new, n)
 	count := bytes.Count(out[lastIdx:], []byte(old))
 	if count > 0 {
-		printOrPanic("more text to replace " + strconv.Itoa(count))
+		return out, errors.New("more text to replace " + strconv.Itoa(count))
+	}
+	return out, nil
+}
+
+func mustReplaceN(in []byte, old, new string, n int) []byte {
+	out, err := replaceN(in, old, new, n)
+	if err != nil {
+		printOrPanic(err)
 	}
 	return out
 }
 
-func printOrPanic(msg string) {
+func printOrPanic(err error) {
 	if panicOnReplaceErr {
-		panic(msg)
+		panic(err)
 	} else {
-		fmt.Println(msg)
+		fmt.Println(err.Error())
 	}
 }
 
