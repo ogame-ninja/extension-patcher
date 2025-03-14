@@ -294,12 +294,12 @@ func JsBeautify(in []byte) []byte {
 // MustReplace replace "n" occurrences of old with new
 // If there are fewer occurrences of old than "n", panic
 func MustReplace(in []byte, old, new string, n int) (out []byte) {
-	return utils.First(mustReplace2(in, old, new, n))
+	return utils.First(mustReplace(in, old, new, n))
 }
 
 // Replace "n" occurrences of old with new
 // Return the last index of the replaced text
-func mustReplace2(in []byte, old, new string, n int) (out []byte, lastIdx int) {
+func mustReplace(in []byte, old, new string, n int) (out []byte, lastIdx int) {
 	oldBytes := []byte(old)
 	newBytes := []byte(new)
 	newBytes = bytes.Replace(newBytes, []byte("{old}"), oldBytes, 1)
@@ -326,7 +326,7 @@ func mustReplace2(in []byte, old, new string, n int) (out []byte, lastIdx int) {
 // MustReplaceN replace all "n" occurrences of old with new
 // If there are fewer/more occurrences of old than n, panic
 func MustReplaceN(in []byte, old, new string, n int) []byte {
-	out, lastIdx := mustReplace2(in, old, new, n)
+	out, lastIdx := mustReplace(in, old, new, n)
 	count := bytes.Count(out[lastIdx:], []byte(old))
 	if count > 0 {
 		printOrPanic("more text to replace " + strconv.Itoa(count))
