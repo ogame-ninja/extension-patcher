@@ -327,14 +327,17 @@ func MustReplaceN(in []byte, old, new string, n int) []byte {
 	out, lastIdx := mustReplace2(in, old, new, n)
 	count := bytes.Count(out[lastIdx:], []byte(old))
 	if count > 0 {
-		msg := "more text to replace " + strconv.Itoa(count)
-		if panicOnReplaceErr {
-			panic(msg)
-		} else {
-			fmt.Println(msg)
-		}
+		printOrPanic("more text to replace " + strconv.Itoa(count))
 	}
 	return out
+}
+
+func printOrPanic(msg string) {
+	if panicOnReplaceErr {
+		panic(msg)
+	} else {
+		fmt.Println(msg)
+	}
 }
 
 // Helper functions, useful for tests
