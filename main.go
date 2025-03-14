@@ -167,12 +167,12 @@ func (p *Patcher) autoAnalyse() {
 			log.Println(err)
 			continue
 		}
-		analyzeFileContent(by, filePath, entry, err)
+		analyzeFileContent(by, filePath, entry)
 	}
 	fmt.Println(strings.Repeat("-", 80))
 }
 
-func analyzeFileContent(by []byte, filePath string, entry myEntryStruct, err error) {
+func analyzeFileContent(by []byte, filePath string, entry myEntryStruct) {
 	terms := []string{
 		"index.php",
 		"ogame.gameforge.com",
