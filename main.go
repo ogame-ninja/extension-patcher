@@ -287,8 +287,7 @@ func JsBeautify(in []byte) []byte {
 	// -f, --file       Input file(s) (Pass '-' for stdin)
 	cmd := exec.Command("js-beautify", "-q", "-f '-'")
 	cmd.Stdin = bytes.NewReader(in)
-	processed := utils.Must(cmd.Output())
-	return processed
+	return utils.Must(cmd.Output())
 }
 
 // MustReplace replace "n" occurrences of old with new
