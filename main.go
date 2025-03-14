@@ -65,7 +65,7 @@ func New(params Params) (*Patcher, error) {
 		return nil, errors.New("missing Provider")
 	}
 	// No extension name provided, extract it from the webstore url
-	params.ExtensionName = utils.Or(params.ExtensionName, params.Provider.GetName())
+	params.ExtensionName = utils.Or(utils.Or(params.ExtensionName, params.Provider.GetName()), "patched")
 	params.DelayBeforeClose = utils.Or(params.DelayBeforeClose, Int(5))
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
