@@ -34,9 +34,10 @@ type FileAndProcessors struct {
 }
 
 type Params struct {
-	ExtensionName    string             // infinity
-	ExpectedSha256   string             // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
-	Provider         providers.Provider // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
+	ExtensionName    string // infinity
+	ExpectedSha256   string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
+	Uri              string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
+	Provider         providers.Provider
 	Files            []FileAndProcessors
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
@@ -50,7 +51,9 @@ type Patcher struct {
 
 func New(params Params) (*Patcher, error) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	provider := params.Provider
+	if params.Provider == nil && params.Uri != "" {
+		params.Provider = providers.MustNew(params.Uri)
+	}
 
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
@@ -58,11 +61,11 @@ func New(params Params) (*Patcher, error) {
 	if len(params.ExpectedSha256) != 0 && len(params.ExpectedSha256) != 64 {
 		return nil, errors.New("ExpectedSha256 must be 64 characters long")
 	}
-	if provider == nil {
+	if params.Provider == nil {
 		return nil, errors.New("missing Provider")
 	}
 	// No extension name provided, extract it from the webstore url
-	params.ExtensionName = utils.Or(params.ExtensionName, provider.GetName())
+	params.ExtensionName = utils.Or(params.ExtensionName, params.Provider.GetName())
 	params.DelayBeforeClose = utils.Or(params.DelayBeforeClose, Int(5))
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")

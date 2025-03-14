@@ -2,7 +2,6 @@ package extension_patcher
 
 import (
 	"bytes"
-	"github.com/ogame-ninja/extension-patcher/pkg/providers"
 	"os"
 	"reflect"
 	"testing"
@@ -67,7 +66,7 @@ func TestProviders(t *testing.T) {
 			DelayBeforeClose: Int(0),
 			ExtensionName:    "test",
 			ExpectedSha256:   "4c2e9e6da31a64c70623619c449a040968cdbea85945bf384fa30ed2d5d24fa3",
-			Provider:         providers.NewFile("./testdata/test1.js"),
+			Uri:              "./testdata/test1.js",
 			KeepOriginal:     true,
 			Files: []FileAndProcessors{
 				NewFile("/test1.js", func(by []byte) []byte { return by }),
@@ -84,7 +83,7 @@ func TestProviders(t *testing.T) {
 		MustNew(Params{
 			DelayBeforeClose: Int(0),
 			ExpectedSha256:   "84d99167220fc7563b4ebb925f80b1e65d9420ea4a2d16ccccebafbe7d2da259",
-			Provider:         providers.NewChromeWebstore("https://chromewebstore.google.com/detail/universeview-extension/ipmfkhoihjbbohnfecpmhekhippaplnh"),
+			Uri:              "https://chromewebstore.google.com/detail/universeview-extension/ipmfkhoihjbbohnfecpmhekhippaplnh",
 			Files: []FileAndProcessors{
 				NewFile("manifest.json", func(by []byte) []byte {
 					return MustReplaceN(by, "UniverseView Extension", "UniverseViewNinja Extension", 1)
@@ -102,7 +101,7 @@ func TestProviders(t *testing.T) {
 		MustNew(Params{
 			DelayBeforeClose: Int(0),
 			ExpectedSha256:   "978c7932426a23b2c69d7f4be32ea4e8e3abbb6a3ea84d7278381be6336f55c3",
-			Provider:         providers.NewOpenUserJS("https://openuserjs.org/install/nullNaN/OGLight.user.js"),
+			Uri:              "https://openuserjs.org/install/nullNaN/OGLight.user.js",
 			KeepOriginal:     true,
 			Files: []FileAndProcessors{
 				NewFile("OGLight.user.js", func(by []byte) []byte {
@@ -121,7 +120,7 @@ func TestProviders(t *testing.T) {
 		MustNew(Params{
 			DelayBeforeClose: Int(0),
 			ExpectedSha256:   "b62c9abd2b60c6447f4bbbcc00066bae82b76308ca9ac4990c3f448b5b6dc83c",
-			Provider:         providers.NewMozillaWebstore("https://addons.mozilla.org/en-US/firefox/addon/ogame-infinity"),
+			Uri:              "https://addons.mozilla.org/en-US/firefox/addon/ogame-infinity",
 			KeepOriginal:     false,
 			Files: []FileAndProcessors{
 				NewFile("/manifest.json", func(by []byte) []byte {
