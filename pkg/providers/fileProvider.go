@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"fmt"
 	"github.com/ogame-ninja/extension-patcher/pkg/utils"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,6 @@ type FileProvider struct {
 
 func (s *FileProvider) GetContent(sha256, dst string, keepOriginal bool) {
 	dstFileName := s.GetDownloadLink()
-	fmt.Println("?!", dstFileName)
 	if !utils.FileExists(dstFileName) {
 		panic("file not found")
 	}
