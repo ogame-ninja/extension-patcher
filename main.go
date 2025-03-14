@@ -283,6 +283,8 @@ func NewFile(fileName string, processors ...Processor) FileAndProcessors {
 }
 
 func JsBeautify(in []byte) []byte {
+	// -q, --quiet      Suppress logging to stdout
+	// -f, --file       Input file(s) (Pass '-' for stdin)
 	cmd := exec.Command("js-beautify", "-q", "-f '-'")
 	cmd.Stdin = bytes.NewReader(in)
 	processed := utils.Must(cmd.Output())
