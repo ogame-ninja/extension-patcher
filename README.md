@@ -6,14 +6,12 @@ import (
 )
 
 func main() {
-	files := []ep.FileAndProcessors{
-		ep.NewFile("/manifest.json", processManifest),
-	}
-
 	ep.MustNew(ep.Params{
-		WebstoreURL:    "https://chromewebstore.google.com/detail/ogame-tracker/gcebldjabjlagnnnjfodjgiddnonehnd",
+		Uri: "https://chromewebstore.google.com/detail/ogame-tracker/gcebldjabjlagnnnjfodjgiddnonehnd",
 		ExpectedSha256: "",
-		Files:          files,
+		Files: []ep.FileAndProcessors{
+			ep.NewFile("/manifest.json", processManifest),
+		},
 	}).Start()
 }
 
