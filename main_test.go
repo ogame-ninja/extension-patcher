@@ -2,6 +2,7 @@ package extension_patcher
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"reflect"
 	"testing"
@@ -54,6 +55,39 @@ func Test_mustReplaceNStr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := mustReplaceNStr(tt.args.in, tt.args.old, tt.args.new, tt.args.n); got != tt.want {
 				t.Errorf("mustReplaceNStr() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_replaceNStr(t *testing.T) {
+	type args struct {
+		in  string
+		old string
+		new string
+		n   int
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+		err  error
+	}{
+		{args: args{in: "ToReplace ToReplace ToReplace", old: "ToReplace", new: "ToReplaceNew", n: 3}, want: "ToReplaceNew ToReplaceNew ToReplaceNew", name: "1"},
+		{args: args{in: "ToReplace Or ToReplace Some Other Text", old: "ToReplace", new: "ToReplaceNew", n: 2}, want: "ToReplaceNew Or ToReplaceNew Some Other Text", name: "1"},
+		{args: args{in: "ToReplace", old: "ToReplace", new: "New {old} New", n: 1}, want: "New ToReplace New", name: "1"},
+		{args: args{in: "ToReplace ToReplace ToReplace", old: "ToReplace", new: "NewReplace", n: 4}, err: errors.New("expected 4 replacements, did 3"), name: "1"},
+		{args: args{in: "ToReplace ToReplace ToReplace", old: "ToReplace", new: "NewReplace", n: 1}, err: errors.New("more text to replace 2"), name: "1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := replaceNStr(tt.args.in, tt.args.old, tt.args.new, tt.args.n)
+			if err != nil {
+				if tt.err == nil || tt.err.Error() != err.Error() {
+					t.Errorf("replaceNStr() error = %v", err)
+				}
+			} else if got != tt.want {
+				t.Errorf("replaceNStr() = %v, want %v", got, tt.want)
 			}
 		})
 	}

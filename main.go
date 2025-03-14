@@ -304,19 +304,19 @@ func MustReplaceN(in []byte, old, new string, n int) []byte {
 
 // Replace "n" occurrences of old with new
 // Return the last index of the replaced text
-func mustReplace(in []byte, old, new string, n int) (out []byte, lastIdx int) {
+func replace(in []byte, old, new string, n int) (out []byte, lastIdx int, err error) {
 	oldBytes := []byte(old)
 	newBytes := []byte(new)
 	newBytes = bytes.Replace(newBytes, []byte("{old}"), oldBytes, 1)
 	if n == -1 {
 		out = bytes.Replace(in, oldBytes, newBytes, -1)
-		return out, len(out)
+		return out, len(out), nil
 	}
 	replacementLength := len(new)
 	for i := 0; i < n; i++ {
 		startIdx := bytes.Index(in, oldBytes)
 		if startIdx == -1 {
-			panic(fmt.Sprintf("expected %d replacements, did %d", n, i))
+			return out, lastIdx, fmt.Errorf("expected %d replacements, did %d", n, i)
 		}
 		newOut := bytes.Replace(in, oldBytes, newBytes, 1)
 		idx := startIdx + replacementLength
@@ -325,16 +325,27 @@ func mustReplace(in []byte, old, new string, n int) (out []byte, lastIdx int) {
 		lastIdx = len(out)
 	}
 	out = append(out, in...)
-	return out, lastIdx
+	return out, lastIdx, nil
 }
 
 func replaceN(in []byte, old, new string, n int) ([]byte, error) {
-	out, lastIdx := mustReplace(in, old, new, n)
+	out, lastIdx, err := replace(in, old, new, n)
+	if err != nil {
+		return out, err
+	}
 	count := bytes.Count(out[lastIdx:], []byte(old))
 	if count > 0 {
 		return out, errors.New("more text to replace " + strconv.Itoa(count))
 	}
 	return out, nil
+}
+
+func mustReplace(in []byte, old, new string, n int) (out []byte, lastIdx int) {
+	out, lastIdx, err := replace(in, old, new, n)
+	if err != nil {
+		panic(err)
+	}
+	return out, lastIdx
 }
 
 func mustReplaceN(in []byte, old, new string, n int) []byte {
@@ -361,4 +372,10 @@ func mustReplaceStr(in, old, new string, n int) (out string) {
 // Helper functions, useful for tests
 func mustReplaceNStr(in, old, new string, n int) string {
 	return string(MustReplaceN([]byte(in), old, new, n))
+}
+
+// Helper functions, useful for tests
+func replaceNStr(in, old, new string, n int) (string, error) {
+	out, err := replaceN([]byte(in), old, new, n)
+	return string(out), err
 }
