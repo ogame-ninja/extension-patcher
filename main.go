@@ -1,16 +1,13 @@
 package extension_patcher
 
 import (
-	"archive/zip"
 	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ogame-ninja/extension-patcher/pkg/stores"
+	"github.com/ogame-ninja/extension-patcher/pkg/providers"
 	"github.com/ogame-ninja/extension-patcher/pkg/utils"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,14 +18,9 @@ import (
 )
 
 const (
-	perm                  os.FileMode = 0644
-	panicOnReplaceErr                 = true
-	jsExtension                       = ".js"
-	chromeWebstorePrefix1             = "https://chrome.google.com/webstore/detail/"
-	chromeWebstorePrefix2             = "https://chromewebstore.google.com/detail/"
-	mozillaWebstorePrefix             = "https://addons.mozilla.org/"
-	openUserJSPrefix                  = "https://openuserjs.org/install/"
-	githubPrefix                      = "https://github.com/"
+	perm              os.FileMode = 0644
+	panicOnReplaceErr             = true
+	jsExtension                   = ".js"
 )
 
 // Int re-export the Int function
@@ -42,48 +34,23 @@ type FileAndProcessors struct {
 }
 
 type Params struct {
-	ExtensionName    string // infinity
-	ExpectedSha256   string // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
-	WebstoreURL      string // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
+	ExtensionName    string             // infinity
+	ExpectedSha256   string             // 315738d9184062db0e42deddf6ab64268b4f7c522484892cf0abddf0560f6bcd
+	Provider         providers.Provider // https://chrome.google.com/webstore/detail/ogame-infinity/hfojakphgokgpbnejoobfamojbgolcbo
 	Files            []FileAndProcessors
 	JsBeautify       bool // Either or not to run "js-beautify" on js files
 	DelayBeforeClose *int
-	KeepZip          bool // Either or not to keep the original file
+	KeepOriginal     bool // Either or not to keep the original file
 	AutoAnalysis     bool
-	Webstore         Webstore
 }
 
 type Patcher struct {
 	params Params
 }
 
-type Webstore interface {
-	GetName() string
-	GetDownloadLink() string
-	ValidatePayload(reader io.Reader) error
-}
-
-var ErrInvalidWebstoreURL = errors.New("invalid WebstoreURL")
-
-func NewStore(webstoreURL string) (Webstore, error) {
-	if strings.HasPrefix(webstoreURL, chromeWebstorePrefix1) ||
-		strings.HasPrefix(webstoreURL, chromeWebstorePrefix2) {
-		return stores.NewChromeStore(webstoreURL), nil
-	} else if strings.HasPrefix(webstoreURL, mozillaWebstorePrefix) {
-		return stores.NewMozillaStore(webstoreURL), nil
-	} else if strings.HasPrefix(webstoreURL, openUserJSPrefix) {
-		return stores.NewOpenUserJSStore(webstoreURL), nil
-	} else if strings.HasPrefix(webstoreURL, githubPrefix) {
-		return stores.NewGithubStore(webstoreURL), nil
-	} else if !strings.HasPrefix(webstoreURL, "http") {
-		return stores.NewFileStore(webstoreURL), nil
-	}
-	return nil, ErrInvalidWebstoreURL
-}
-
 func New(params Params) (*Patcher, error) {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	webstoreURL := params.WebstoreURL
+	provider := params.Provider
 
 	if params.ExpectedSha256 == "" {
 		return nil, errors.New("missing ExpectedSha256")
@@ -91,17 +58,12 @@ func New(params Params) (*Patcher, error) {
 	if len(params.ExpectedSha256) != 0 && len(params.ExpectedSha256) != 64 {
 		return nil, errors.New("ExpectedSha256 must be 64 characters long")
 	}
-	if webstoreURL == "" {
-		return nil, errors.New("missing WebstoreURL")
-	}
-	webstore, err := NewStore(webstoreURL)
-	if err != nil {
-		return nil, err
+	if provider == nil {
+		return nil, errors.New("missing Provider")
 	}
 	// No extension name provided, extract it from the webstore url
-	params.ExtensionName = utils.Or(params.ExtensionName, webstore.GetName())
+	params.ExtensionName = utils.Or(params.ExtensionName, provider.GetName())
 	params.DelayBeforeClose = utils.Or(params.DelayBeforeClose, Int(5))
-	params.Webstore = webstore
 	if len(params.Files) == 0 {
 		return nil, errors.New("missing Files")
 	}
@@ -109,11 +71,7 @@ func New(params Params) (*Patcher, error) {
 }
 
 func MustNew(params Params) *Patcher {
-	p, err := New(params)
-	if err != nil {
-		panic(err)
-	}
-	return p
+	return utils.Must(New(params))
 }
 
 func (p *Patcher) Start() {
@@ -130,74 +88,21 @@ func (p *Patcher) Start() {
 	}
 
 	extensionName := p.params.ExtensionName
-	webstore := p.params.Webstore
+	provider := p.params.Provider
 	expectedSha256 := p.params.ExpectedSha256
 
-	_, isOpenUserJSStore := webstore.(*stores.OpenUserJSStore)
-	_, isFileStore := webstore.(*stores.FileStore)
-
-	extensionNameZip := extensionName + ".zip"
-
-	if isOpenUserJSStore {
-		_ = os.Mkdir(extensionName, 0755)
-		extensionNameZip = filepath.Join(extensionName, extensionName+".user.js.orig")
-	} else if isFileStore {
-		_ = os.Mkdir(extensionName, 0755)
-		extensionNameZip = webstore.GetDownloadLink()
-	}
-
-	if isFileStore {
-	} else if !utils.FileExists(extensionNameZip) {
-		if err := downloadExtension(webstore, extensionNameZip); err != nil {
-			panic(err)
-		}
-		fmt.Println("extension downloaded")
-	}
-
-	extensionZipSha256 := utils.Sha256f(extensionNameZip)
-	if extensionZipSha256 != expectedSha256 {
-		fmt.Printf("invalid sha256 for %s (sha256: %s) \n", extensionNameZip, extensionZipSha256)
-		return
-	}
-
-	if isOpenUserJSStore {
-		if err := utils.CopyFile(extensionNameZip, strings.TrimSuffix(extensionNameZip, ".orig")); err != nil {
-			panic(err)
-		}
-	} else {
-		if isFileStore && !strings.HasSuffix(extensionNameZip, ".zip") {
-			if err := utils.CopyFile(extensionNameZip, filepath.Join(extensionName, extensionNameZip)); err != nil {
-				panic(err)
-			}
-		} else {
-			if err := unzip(extensionNameZip, extensionName); err != nil {
-				panic(err)
-			}
-		}
-	}
-	if !p.params.KeepZip {
-		_ = os.Remove(extensionNameZip)
-	}
-
-	if p.params.AutoAnalysis {
-		p.autoAnalyse()
-	}
-
+	_ = os.Mkdir(extensionName, 0755)
+	provider.GetContent(expectedSha256, extensionName, p.params.KeepOriginal)
+	p.autoAnalyse()
 	p.processFiles()
 
-	path, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
+	path := utils.Must(os.Getwd())
 	fmt.Println("Done. code generated in " + path)
 }
 
 func (p *Patcher) processFile(filename string, processors []Processor, maxLen int) {
 	filePath := filepath.Join(p.params.ExtensionName, filename)
-	by, err := os.ReadFile(filePath)
-	if err != nil {
-		panic(err)
-	}
+	by := utils.Must(os.ReadFile(filePath))
 	for _, processor := range processors {
 		by = processor(by)
 	}
@@ -206,9 +111,7 @@ func (p *Patcher) processFile(filename string, processors []Processor, maxLen in
 		by = JsBeautify(by)
 	}
 
-	if err := os.WriteFile(filePath, by, perm); err != nil {
-		panic(err)
-	}
+	utils.CheckErr(os.WriteFile(filePath, by, perm))
 	fmt.Printf("%-"+strconv.Itoa(maxLen)+"v patched\n", filename)
 }
 
@@ -228,12 +131,12 @@ type myEntryStruct struct {
 }
 
 func (p *Patcher) autoAnalyse() {
+	if !p.params.AutoAnalysis {
+		return
+	}
 	fmt.Println(strings.Repeat("-", 80))
 	extName := p.params.ExtensionName
-	entries, err := os.ReadDir(extName)
-	if err != nil {
-		panic(err)
-	}
+	entries := utils.Must(os.ReadDir(extName))
 	var myEntries []myEntryStruct
 	for _, entry := range entries {
 		myEntries = append(myEntries, myEntryStruct{DirEntry: entry, Prefix: extName})
@@ -379,86 +282,8 @@ func NewFile(fileName string, processors ...Processor) FileAndProcessors {
 func JsBeautify(in []byte) []byte {
 	cmd := exec.Command("js-beautify", "-q", "-f '-'")
 	cmd.Stdin = bytes.NewReader(in)
-	processed, err := cmd.Output()
-	if err != nil {
-		panic(err)
-	}
+	processed := utils.Must(cmd.Output())
 	return processed
-}
-
-func downloadExtension(webstore Webstore, zipFileName string) error {
-	downloadLink := webstore.GetDownloadLink()
-
-	resp, err := http.Get(downloadLink)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if err := webstore.ValidatePayload(resp.Body); err != nil {
-		return err
-	}
-
-	// Create the file
-	out, err := os.Create(zipFileName)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func unzip(src string, dst string) error {
-	var filenames []string
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-	for f := range r.File {
-		if err := func(f int) error {
-			destinationPath := filepath.Join(dst, r.File[f].Name)
-			if !strings.HasPrefix(destinationPath, filepath.Clean(dst)+string(os.PathSeparator)) {
-				return fmt.Errorf("%s: illegal file path", src)
-			}
-			if r.File[f].FileInfo().IsDir() {
-				if err := os.MkdirAll(destinationPath, os.ModePerm); err != nil {
-					return err
-				}
-				return nil
-			}
-			if err := os.MkdirAll(filepath.Dir(destinationPath), os.ModePerm); err != nil {
-				return err
-			}
-			rc, err := r.File[f].Open()
-			if err != nil {
-				return err
-			}
-			defer rc.Close()
-			of, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, r.File[f].Mode())
-			if err != nil {
-				return err
-			}
-			defer of.Close()
-			if _, err = io.Copy(of, rc); err != nil {
-				return err
-			}
-			filenames = append(filenames, destinationPath)
-			return nil
-		}(f); err != nil {
-			return err
-		}
-	}
-	if len(filenames) == 0 {
-		return fmt.Errorf("zip file is empty")
-	}
-	return nil
 }
 
 // MustReplace replace "n" occurrences of old with new
